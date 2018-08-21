@@ -18,7 +18,7 @@ import eof
     "-m",
     type=click.Choice(["S1A", "S1B"]),
     help="Sentinel satellite to download (None gets both S1A and S1B)")
-def cli(context, **kwargs):
+def cli(date, path, mission):
     """Download Sentinel precise orbit files.
 
     Saves files to current directory, regardless of what --path
@@ -27,4 +27,4 @@ def cli(context, **kwargs):
     Download EOFs for specific date, or searches for Sentinel files in --path.
     With no arguments, searches current directory for Sentinel 1 products
     """
-    eof.main(context['path'], kwargs['mission'], kwargs['date'])
+    eof.main(path, mission, date)

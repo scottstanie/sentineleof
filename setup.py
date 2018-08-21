@@ -4,14 +4,14 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="insar",
-    version="1.1.3",
+    name="sentineleof",
+    version="0.1",
     author="Scott Staniewicz",
     author_email="scott.stanie@utexas.com",
-    description="Tools for gathering and preprocessing InSAR data",
+    description="Download precise orbit files for Sentinel 1 products",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/scottstanie/insar",
+    url="https://github.com/scottstanie/sentineleof",
     packages=setuptools.find_packages(),
     include_package_data=True,
     classifiers=(
@@ -26,14 +26,10 @@ setuptools.setup(
         "Topic :: Scientific/Engineering",
         "Intended Audience :: Science/Research",
     ),
-    install_requires=["numpy", "scipy", "requests", "matplotlib", "click"],
+    install_requires=["click", "python-dateutil"],
     entry_points={
         "console_scripts": [
-            "insar=insar.scripts.cli:cli",
+            "eof=cli:cli",
         ],
     },
-    ext_modules=[
-        setuptools.Extension(
-            "insar.c_upsample", ["insar/c_upsample.pyx"], extra_compile_args=["-O3", "-std=gnu99"])
-    ],
     zip_safe=False)
