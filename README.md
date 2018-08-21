@@ -43,7 +43,7 @@ Options:
 To use the function from python, you can pass a list of dates:
 
 ```python
-from insar.eof import download_eofs
+from eof import download_eofs
 
 download_eofs([datetime.datetime(2018, 5, 3, 0, 0, 0)])
 download_eofs(['20180503', '20180507'], ['S1A', 'S1B'])
@@ -55,7 +55,7 @@ Class to deal with extracting relevant data from SAR filenames.
 Example:
 
 ```python
-from insar.parsers import Sentinel
+from parsers import Sentinel
 
 parser = Sentinel('S1A_IW_SLC__1SDV_20180408T043025_20180408T043053_021371_024C9B_1B70.zip')
 parser.start_time
