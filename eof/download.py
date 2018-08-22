@@ -25,7 +25,6 @@ See parsers for Sentinel file naming description
 """
 import os
 import glob
-import sys
 import itertools
 import logging
 import requests
@@ -182,14 +181,13 @@ def main(path='.', mission=None, date=None):
     _set_logger_handler()
 
     if (mission and not date):
-        logger.error("Must specify date if specifying mission.")
-        sys.exit(1)
+        raise ValueError("Must specify date if specifying mission")
     if not date:
         # No command line args given: search current directory
         orbit_dts, missions = find_sentinel_products(path)
         if not orbit_dts:
             logger.info("No Sentinel products found in directory %s, exiting", path)
-            sys.exit(0)
+            return 0
     if date:
         orbit_dts = [date]
         missions = list(mission) if mission else []
