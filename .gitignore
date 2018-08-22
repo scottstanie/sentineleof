@@ -16,6 +16,7 @@ dist
 *.sql
 
 docs/_build
+.coverage
 
 # cython build product
 *cpython*.so
