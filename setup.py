@@ -26,7 +26,7 @@ setuptools.setup(
         "Topic :: Scientific/Engineering",
         "Intended Audience :: Science/Research",
     ),
-    install_requires=["click", "python-dateutil"],
+    install_requires=["requests", "click", "python-dateutil"],
     entry_points={
         "console_scripts": [
             "eof=eof.download:cli",
