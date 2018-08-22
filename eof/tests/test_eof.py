@@ -112,3 +112,10 @@ class TestEOF(unittest.TestCase):
             self.assertEqual(eof_contents, self.sample_eof)
         finally:
             shutil.rmtree(temp_dir)
+
+    def test_main_nothing_found(self):
+        # Test "no sentinel products found"
+        self.assertEqual(download.main(path='/notreal'), 0)
+
+    def test_main_error_args(self):
+        self.assertRaises(ValueError, download.main, path='/notreal', mission='S1A')

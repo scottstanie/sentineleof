@@ -36,3 +36,11 @@ class TestSentinel(unittest.TestCase):
 
     def test_mission(self):
         self.assertEqual(self.parser.mission, 'S1A')
+
+    def test_relative_orbit(self):
+        self.assertEqual(self.parser.relative_orbit, 124)
+        self.assertEqual(self.parser.path, 124)
+
+    def test_str_name(self):
+        self.assertEqual(str(self.parser), 'Sentinel S1A, path 124 from 2018-04-08')
+        self.assertEqual(repr(self.parser), 'Sentinel S1A, path 124 from 2018-04-08')
