@@ -5,7 +5,7 @@ import datetime
 import os
 import responses
 
-import eof
+from . import eof
 
 
 class TestEOF(unittest.TestCase):

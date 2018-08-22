@@ -9,7 +9,7 @@ Example EOF: 'S1A_OPER_AUX_POEORB_OPOD_20140828T122040_V20140806T225944_20140808
 
  'S1A' : mission id (satellite it applies to)
  'OPER' : OPER for "Routine Operations" file
- 'AUX_POEORB' : AUX_ for "auxiliary data file", POEORB for Precise Orbit Ephemerides (POE) Orbit File
+ 'AUX_POEORB' : AUX_ for "auxiliary data file", POEORB=Precise Orbit Ephemerides (POE) Orbit File
  'OPOD'  Site Center of the file originator
 
  '20140828T122040' creation date of file
@@ -32,11 +32,13 @@ import requests
 from multiprocessing.pool import ThreadPool
 from datetime import timedelta
 from dateutil.parser import parse
-from parsers import Sentinel
+from .parsers import Sentinel
 
 MAX_WORKERS = 20  # For parallel downloading
 
-BASE_URL = "https://qc.sentinel1.eo.esa.int/api/v1/?product_type=AUX_POEORB&validity_start__lt={start_date}&validity_stop__gt={stop_date}"
+BASE_URL = "https://qc.sentinel1.eo.esa.int/api/v1/?product_type=AUX_POEORB\
+&validity_start__lt={start_date}&validity_stop__gt={stop_date}"
+
 DATE_FMT = "%Y-%m-%d"  # Used in sentinel API url
 
 logger = logging.Logger('sentineleof')

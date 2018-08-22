@@ -2,7 +2,7 @@
 CLI tool for downloading Sentinel 1 EOF files
 """
 import click
-import eof
+from . import eof
 
 
 # COMMAND: DOWNLOAD

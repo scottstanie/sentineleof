@@ -1,7 +1,6 @@
 import unittest
 from datetime import datetime
-from os.path import join, dirname
-from insar.parsers import Sentinel
+from .parsers import Sentinel
 
 
 class TestSentinel(unittest.TestCase):
