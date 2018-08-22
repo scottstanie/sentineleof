@@ -29,7 +29,7 @@ setuptools.setup(
     install_requires=["click", "python-dateutil"],
     entry_points={
         "console_scripts": [
-            "eof=cli:cli",
+            "eof=eof.download:cli",
         ],
     },
     zip_safe=False)
