@@ -43,7 +43,7 @@ Options:
 To use the function from python, you can pass a list of dates:
 
 ```python
-from eof import download_eofs
+from eof.download import download_eofs
 
 download_eofs([datetime.datetime(2018, 5, 3, 0, 0, 0)])
 download_eofs(['20180503', '20180507'], ['S1A', 'S1B'])
