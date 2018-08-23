@@ -10,6 +10,7 @@ from eof import download
 
 class TestEOF(unittest.TestCase):
     def setUp(self):
+        self.empty_api_search = {'count': 0}
         self.sample_api_search = {
             'count':
             1,
@@ -61,6 +62,18 @@ class TestEOF(unittest.TestCase):
         ]
         self.assertEqual(result_list, expected)
 
+    @responses.activate
+    def test_eof_list_empty(self):
+        responses.add(
+            responses.GET,
+            'https://qc.sentinel1.eo.esa.int/api/v1/?product_type=AUX_POEORB&validity_stop__gt=2018-05-03&validity_start__lt=2018-05-02',
+            json=self.empty_api_search,
+            status=200)
+
+        test_date = datetime.datetime(2018, 5, 2)
+        self.assertRaises(ValueError, download.eof_list, test_date)
+        self.assertEqual(download._download_and_write('S1A', test_date), None)
+
     def test_find_sentinel_products(self):
         try:
             temp_dir = tempfile.mkdtemp()
@@ -82,6 +95,13 @@ class TestEOF(unittest.TestCase):
         finally:
             # Clean up temp dir
             shutil.rmtree(temp_dir)
+
+    def test_download_eofs_errors(self):
+        orbit_dates = [datetime.datetime(2018, 5, 2, 4, 30, 26)]
+        self.assertRaises(
+            ValueError, download.download_eofs, orbit_dates, missions=['BadMissionStr'])
+        # More missions for dates
+        self.assertRaises(ValueError, download.download_eofs, orbit_dates, missions=['S1A', 'S1B'])
 
     @responses.activate
     def test_download_eofs(self):
