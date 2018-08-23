@@ -63,9 +63,6 @@ class Sentinel(object):
         Raises:
             ValueError: if filename string is invalid
         """
-        if not self.FILE_REGEX:
-            raise NotImplementedError("Must define class FILE_REGEX to parse")
-
         match = re.search(self.FILE_REGEX, self.filename)
         if not match:
             raise ValueError('Invalid {} filename: {}'.format(self.__class__.__name__,
