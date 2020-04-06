@@ -29,7 +29,7 @@ class TestEOF(unittest.TestCase):
                 'S1A_OPER_AUX_POEORB_OPOD_20180522T120730_V20180501T225942_20180503T005942',
                 'product_type': 'AUX_POEORB',
                 'remote_url':
-                'http://aux.sentinel1.eo.esa.int/POEORB/2018/05/22/S1A_OPER_AUX_POEORB_OPOD_20180522T120730_V20180501T225942_20180503T005942.EOF',
+                'http://aux.sentinel1.eo.esa.int/POEORB/2018/05/22/S1A_OPER_AUX_POEORB_OPOD_20180522T120730_V20180501T225942_20180503T005942.EOF',  # noqa
                 'size': 4410148,
                 'uuid': 'a758ad6d-b718-4dff-a1b2-822874ca4017',
                 'validity_start': '2018-05-01T22:59:42',
@@ -105,12 +105,12 @@ class TestEOF(unittest.TestCase):
         # Mock the date search url
         responses.add(
             responses.GET,
-            'https://qc.sentinel1.eo.esa.int/api/v1/?product_type=AUX_POEORB&sentinel1__mission=None&validity_start__lt=2018-05-02T04:28:26&validity_stop__gt=2018-05-02T04:32:26',
+            'https://qc.sentinel1.eo.esa.int/api/v1/?product_type=AUX_POEORB&sentinel1__mission=None&validity_start__lt=2018-05-02T04:28:26&validity_stop__gt=2018-05-02T04:32:26',  # noqa
             json=self.sample_api_search,
             status=200)
 
         # Also mock the EOF download url
-        eof_url = 'http://aux.sentinel1.eo.esa.int/POEORB/2018/05/22/S1A_OPER_AUX_POEORB_OPOD_20180522T120730_V20180501T225942_20180503T005942.EOF'
+        eof_url = 'http://aux.sentinel1.eo.esa.int/POEORB/2018/05/22/S1A_OPER_AUX_POEORB_OPOD_20180522T120730_V20180501T225942_20180503T005942.EOF'  # noqa
         responses.add(responses.GET, eof_url, body=self.sample_eof, status=200)
 
         eof_name = eof_url.split('/')[-1]
