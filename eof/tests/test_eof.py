@@ -19,30 +19,21 @@ class TestEOF(unittest.TestCase):
             'previous':
             None,
             'results': [{
-                'creation_date':
-                '2018-05-22T12:07:30',
-                'footprint':
-                None,
-                'hash':
-                '43ca6cd1bdc17a740953ab15da08ddaead6c23d3',
-                'metadata_date':
-                '2018-06-19T13:16:41.130580',
+                'creation_date': '2018-05-22T12:07:30',
+                'footprint': None,
+                'hash': '43ca6cd1bdc17a740953ab15da08ddaead6c23d3',
+                'metadata_date': '2018-06-19T13:16:41.130580',
                 'physical_name':
                 'S1A_OPER_AUX_POEORB_OPOD_20180522T120730_V20180501T225942_20180503T005942.EOF',
                 'product_name':
                 'S1A_OPER_AUX_POEORB_OPOD_20180522T120730_V20180501T225942_20180503T005942',
-                'product_type':
-                'AUX_POEORB',
+                'product_type': 'AUX_POEORB',
                 'remote_url':
                 'http://aux.sentinel1.eo.esa.int/POEORB/2018/05/22/S1A_OPER_AUX_POEORB_OPOD_20180522T120730_V20180501T225942_20180503T005942.EOF',
-                'size':
-                4410148,
-                'uuid':
-                'a758ad6d-b718-4dff-a1b2-822874ca4017',
-                'validity_start':
-                '2018-05-01T22:59:42',
-                'validity_stop':
-                '2018-05-03T00:59:42'
+                'size': 4410148,
+                'uuid': 'a758ad6d-b718-4dff-a1b2-822874ca4017',
+                'validity_start': '2018-05-01T22:59:42',
+                'validity_stop': '2018-05-03T00:59:42'
             }]
         }
         self.sample_eof = """<?xml version="1.0" ?><Earth_Explorer_File></Earth_Explorer_File>"""
@@ -51,14 +42,14 @@ class TestEOF(unittest.TestCase):
     def test_eof_list(self):
         responses.add(
             responses.GET,
-            'https://qc.sentinel1.eo.esa.int/api/v1/?product_type=AUX_POEORB&validity_stop__gt=2018-05-03&validity_start__lt=2018-05-02',
+            'https://qc.sentinel1.eo.esa.int/api/v1/?product_type=AUX_POEORB&sentinel1__mission=S1A&validity_start__lt=2018-05-01T23:58:00&validity_stop__gt=2018-05-02T00:02:00',  # noqa
             json=self.sample_api_search,
             status=200)
 
         test_date = datetime.datetime(2018, 5, 2)
-        result_list = download.eof_list(test_date)
+        result_list = download.eof_list(test_date, 'S1A')
         expected = [
-            'http://aux.sentinel1.eo.esa.int/POEORB/2018/05/22/S1A_OPER_AUX_POEORB_OPOD_20180522T120730_V20180501T225942_20180503T005942.EOF'
+            'http://aux.sentinel1.eo.esa.int/POEORB/2018/05/22/S1A_OPER_AUX_POEORB_OPOD_20180522T120730_V20180501T225942_20180503T005942.EOF'  # noqa
         ]
         self.assertEqual(result_list, expected)
 
@@ -66,12 +57,17 @@ class TestEOF(unittest.TestCase):
     def test_eof_list_empty(self):
         responses.add(
             responses.GET,
-            'https://qc.sentinel1.eo.esa.int/api/v1/?product_type=AUX_POEORB&validity_stop__gt=2018-05-03&validity_start__lt=2018-05-02',
+            'https://qc.sentinel1.eo.esa.int/api/v1/?product_type=AUX_POEORB&sentinel1__mission=S1A&validity_start__lt=2018-05-01T23:58:00&validity_stop__gt=2018-05-02T00:02:00',  # noqa
+            json=self.empty_api_search,
+            status=200)
+        responses.add(
+            responses.GET,
+            'https://qc.sentinel1.eo.esa.int/api/v1/?product_type=AUX_RESORB&sentinel1__mission=S1A&validity_start__lt=2018-05-01T23:58:00&validity_stop__gt=2018-05-02T00:02:00',  # noqa
             json=self.empty_api_search,
             status=200)
 
         test_date = datetime.datetime(2018, 5, 2)
-        self.assertRaises(ValueError, download.eof_list, test_date)
+        self.assertRaises(ValueError, download.eof_list, test_date, 'S1A')
         self.assertEqual(download._download_and_write('S1A', test_date), None)
 
     def test_find_sentinel_products(self):
@@ -85,11 +81,10 @@ class TestEOF(unittest.TestCase):
             open(name2, 'w').close()
             orbit_dates, missions = download.find_sentinel_products(startpath=temp_dir)
 
-            self.assertEqual(
-                sorted(orbit_dates), [
-                    datetime.datetime(2018, 4, 20, 4, 30, 26),
-                    datetime.datetime(2018, 5, 2, 4, 30, 26)
-                ])
+            self.assertEqual(sorted(orbit_dates), [
+                datetime.datetime(2018, 4, 20, 4, 30, 26),
+                datetime.datetime(2018, 5, 2, 4, 30, 26)
+            ])
 
             self.assertEqual(sorted(missions), ['S1A', 'S1B'])
         finally:
@@ -98,8 +93,10 @@ class TestEOF(unittest.TestCase):
 
     def test_download_eofs_errors(self):
         orbit_dates = [datetime.datetime(2018, 5, 2, 4, 30, 26)]
-        self.assertRaises(
-            ValueError, download.download_eofs, orbit_dates, missions=['BadMissionStr'])
+        self.assertRaises(ValueError,
+                          download.download_eofs,
+                          orbit_dates,
+                          missions=['BadMissionStr'])
         # More missions for dates
         self.assertRaises(ValueError, download.download_eofs, orbit_dates, missions=['S1A', 'S1B'])
 
@@ -108,7 +105,7 @@ class TestEOF(unittest.TestCase):
         # Mock the date search url
         responses.add(
             responses.GET,
-            'https://qc.sentinel1.eo.esa.int/api/v1/?product_type=AUX_POEORB&validity_stop__gt=2018-05-03&validity_start__lt=2018-05-02',
+            'https://qc.sentinel1.eo.esa.int/api/v1/?product_type=AUX_POEORB&sentinel1__mission=None&validity_start__lt=2018-05-02T04:28:26&validity_stop__gt=2018-05-02T04:32:26',
             json=self.sample_api_search,
             status=200)
 
