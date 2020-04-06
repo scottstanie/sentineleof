@@ -25,7 +25,12 @@ setuptools.setup(name="sentineleof",
                      "Topic :: Scientific/Engineering",
                      "Intended Audience :: Science/Research",
                  ),
-                 install_requires=["requests", "click", "python-dateutil, apertools"],
+                 install_requires=[
+                     "requests",
+                     "click",
+                     "python-dateutil",
+                     "apertools",
+                 ],
                  entry_points={
                      "console_scripts": [
                          "eof=eof.cli:cli",
