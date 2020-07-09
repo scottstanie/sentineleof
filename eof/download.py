@@ -126,7 +126,7 @@ def eof_list(start_dt, mission, orbit_type=PRECISE_ORBIT):
         raise ValueError('No EOF files found for {} on {} at {}'.format(
             start_dt.strftime(DT_FMT), mission, url))
 
-    return [result['remote_url'] for result in response.json()['results']]
+    return [result['remote_url'] for result in response.json()['results']], orbit_type
 
 
 def _dedupe_links(links):
@@ -134,6 +134,18 @@ def _dedupe_links(links):
     orb1 = SentinelOrbit(links[0].split('/')[-1])
     for link in links[1:]:
         if SentinelOrbit(link.split('/')[-1]).date != orb1.date:
+            out.append(link)
+    return out
+
+
+def _pick_precise_file(links, sent_date):
+    """Choose the precise file with (sent_date - 1, sent_date + 1)"""
+    out = []
+    for link in links:
+        so = SentinelOrbit(link.split('/')[-1])
+        # dumb hack until I figure out what the RAW processor is doing with the orbtimings
+        if ((so.start_time.date() == (sent_date - timedelta(days=1)).date())
+                and (so.stop_time.date() == (sent_date + timedelta(days=1)).date())):
             out.append(link)
     return out
 
@@ -150,13 +162,15 @@ def _download_and_write(mission, dt, save_dir="."):
         None
     """
     try:
-        cur_links = eof_list(dt, mission)
+        cur_links, orbit_type = eof_list(dt, mission)
     except ValueError as e:  # 0 found for date
         logger.warning(e.args[0])
         logger.warning('Skipping {}'.format(dt.strftime('%Y-%m-%d')))
         return
 
     cur_links = _dedupe_links(cur_links)
+    if orbit_type == PRECISE_ORBIT:
+        cur_links = _pick_precise_file(cur_links, dt)
 
     # RESORB has multiple overlapping
     # assert len(cur_links) <= 2, "Too many links found for {}: {}".format(dt, cur_links)
