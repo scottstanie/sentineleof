@@ -143,7 +143,7 @@ def _pick_precise_file(links, sent_date):
     out = []
     for link in links:
         so = SentinelOrbit(link.split('/')[-1])
-        # dumb hack until I figure out what the RAW processor is doing with the orbtimings
+        # hotfix until I figure out what the RAW processor is doing with the orbtimings
         if ((so.start_time.date() == (sent_date - timedelta(days=1)).date())
                 and (so.stop_time.date() == (sent_date + timedelta(days=1)).date())):
             out.append(link)
