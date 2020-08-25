@@ -3,7 +3,7 @@
 
 # Sentinel EOF
 
-Tool to download Sentinel 1 precise orbit files (.EOF files) for processing SLCs
+Tool to download Sentinel 1 precise/restituted orbit files (.EOF files) for processing SLCs
 
 
 ## Setup and installation
@@ -15,7 +15,12 @@ pip install sentineleof
 This will put the executable `eof` on your path 
 
 
-virtualenv is optional but recommended.
+If you have a bunch of Sentinel 1 zip files (or unzipped SAFE folders), you can simply run
+
+```bash
+eof
+```
+and download either the precise orbit files, or, if the POEORB files have not been released, the restituted RESORB files.
 
 ## Command Line Interface Reference
 
