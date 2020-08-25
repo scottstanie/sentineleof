@@ -48,9 +48,11 @@ class TestEOF(unittest.TestCase):
 
         test_date = datetime.datetime(2018, 5, 2)
         result_list = download.eof_list(test_date, 'S1A')
-        expected = [
-            'http://aux.sentinel1.eo.esa.int/POEORB/2018/05/22/S1A_OPER_AUX_POEORB_OPOD_20180522T120730_V20180501T225942_20180503T005942.EOF'  # noqa
-        ]
+        expected = (
+            [
+                'http://aux.sentinel1.eo.esa.int/POEORB/2018/05/22/S1A_OPER_AUX_POEORB_OPOD_20180522T120730_V20180501T225942_20180503T005942.EOF'  # noqa
+            ],
+            'POEORB')
         self.assertEqual(result_list, expected)
 
     @responses.activate

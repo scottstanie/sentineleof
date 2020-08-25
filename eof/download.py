@@ -193,29 +193,37 @@ def find_current_eofs(startpath):
         [SentinelOrbit(filename) for filename in glob.glob(os.path.join(startpath, '*EOF'))])
 
 
+def find_unique_safes(startpath):
+    file_set = set()
+    for filename in glob.glob(os.path.join(startpath, 'S1*')):
+        try:
+            parsed_file = Sentinel(filename)
+        except ValueError:  # Doesn't match a sentinel file
+            logger.debug('Skipping {}, not a Sentinel 1 file'.format(filename))
+            continue
+        file_set.add(parsed_file)
+    return file_set
+
+
 def find_sentinel_products(startpath='./'):
     """Parse the startpath directory for any Sentinel 1 products' date and mission"""
     orbit_dts = []
     missions = []
     current_eofs = find_current_eofs(startpath)
 
-    for filename in glob.glob(os.path.join(startpath, 'S1*')):
-        try:
-            sent_parse = Sentinel(filename)
-        except ValueError:  # Doesn't match a sentinel file
-            logger.debug('Skipping {}, not a Sentinel 1 file'.format(filename))
-            continue
+    for parsed_file in find_unique_safes(startpath):
 
-        if sent_parse.start_time in orbit_dts:  # start_time is a datetime
+        if parsed_file.start_time in orbit_dts:  # start_time is a datetime, already found
             continue
-        if any(sent_parse.start_time in orbit for orbit in current_eofs):
-            logger.info('Skipping {}, already have EOF file'.format(filename))
+        if any(parsed_file.start_time in orbit for orbit in current_eofs):
+            logger.info('Skipping {}, already have EOF file'.format(
+                os.path.splitext(parsed_file.filename)[0]))
             continue
 
         logger.info("Downloading precise orbits for {} on {}".format(
-            sent_parse.mission, sent_parse.start_time.strftime('%Y-%m-%d')))
-        orbit_dts.append(sent_parse.start_time)
-        missions.append(sent_parse.mission)
+            parsed_file.mission, parsed_file.start_time.strftime('%Y-%m-%d')))
+        orbit_dts.append(parsed_file.start_time)
+        missions.append(parsed_file.mission)
 
     return orbit_dts, missions
 
