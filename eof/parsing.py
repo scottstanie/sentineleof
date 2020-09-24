@@ -44,10 +44,15 @@ def parse_orbit(
 
 
 def write_orbinfo(orbit_tuples, outname="out.orbtiming"):
+    """Write file with orbit states parsed into simpler format
+    
+    seconds x y z vx vy vz ax ay az
+    """
     with open(outname, "w") as f:
         f.write("0\n")
         f.write("0\n")
         f.write("0\n")
+        f.write("%s\n" % len(orbit_tuples))
         for tup in orbit_tuples:
             # final 0.0 0.0 0.0 is ax, ax, az accelerations
             f.write(" ".join(tup) + " 0.0 0.0 0.0\n")
