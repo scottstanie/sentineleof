@@ -44,7 +44,7 @@ def parse_orbit(
 
 
 def write_orbinfo(orbit_tuples, outname="out.orbtiming"):
-    with open("orbtiming.full", "w") as f:
+    with open(outname, "w") as f:
         f.write("0\n")
         f.write("0\n")
         f.write("0\n")
