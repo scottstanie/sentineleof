@@ -72,7 +72,7 @@ class TestEOF(unittest.TestCase):
         self.assertRaises(ValueError, download.eof_list, test_date, 'S1A')
         self.assertEqual(download._download_and_write('S1A', test_date), None)
 
-    def test_find_sentinel_products(self):
+    def test_find_scenes_to_download(self):
         try:
             temp_dir = tempfile.mkdtemp()
             name1 = os.path.join(
@@ -81,7 +81,7 @@ class TestEOF(unittest.TestCase):
                 temp_dir, 'S1B_IW_SLC__1SDV_20180502T043026_20180502T043054_021721_025793_5C18.zip')
             open(name1, 'w').close()
             open(name2, 'w').close()
-            orbit_dates, missions = download.find_sentinel_products(startpath=temp_dir)
+            orbit_dates, missions = download.find_scenes_to_download(search_path=temp_dir)
 
             self.assertEqual(sorted(orbit_dates), [
                 datetime.datetime(2018, 4, 20, 4, 30, 26),
@@ -134,7 +134,7 @@ class TestEOF(unittest.TestCase):
 
     def test_main_nothing_found(self):
         # Test "no sentinel products found"
-        self.assertEqual(download.main(path='/notreal'), 0)
+        self.assertEqual(download.main(search_path='/notreal'), 0)
 
     def test_main_error_args(self):
-        self.assertRaises(ValueError, download.main, path='/notreal', mission='S1A')
+        self.assertRaises(ValueError, download.main, search_path='/notreal', mission='S1A')

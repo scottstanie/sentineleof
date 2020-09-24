@@ -55,5 +55,5 @@ def write_orbinfo(orbit_tuples, outname="out.orbtiming"):
         f.write("%s\n" % len(orbit_tuples))
         for tup in orbit_tuples:
             # final 0.0 0.0 0.0 is ax, ax, az accelerations
-            f.write(" ".join(tup) + " 0.0 0.0 0.0\n")
+            f.write(" ".join(map(str, tup)) + " 0.0 0.0 0.0\n")
 
