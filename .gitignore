@@ -1,5 +1,6 @@
 *.pyc
 *.swp
+*.vscode
 
 # Don't add huge DEM data files
 *.hgt
