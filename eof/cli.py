@@ -17,7 +17,12 @@ from eof import download
     "-m",
     type=click.Choice(["S1A", "S1B"]),
     help="Sentinel satellite to download (None gets both S1A and S1B)")
-def cli(date, path, mission):
+@click.option(
+    '--save-dir',
+    type=click.Path(exists=False, file_okay=False, writable=True),
+    default='.',
+    help="Directory to save output .EOF files into")
+def cli(date, path, mission, save_dir):
     """Download Sentinel precise orbit files.
 
     Saves files to current directory, regardless of what --path
@@ -26,4 +31,4 @@ def cli(date, path, mission):
     Download EOFs for specific date, or searches for Sentinel files in --path.
     With no arguments, searches current directory for Sentinel 1 products
     """
-    download.main(path, mission, date)
+    download.main(path=path, mission=mission, date=date, save_dir=save_dir)
