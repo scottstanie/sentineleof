@@ -32,6 +32,7 @@ from multiprocessing.pool import ThreadPool
 from datetime import timedelta
 from dateutil.parser import parse
 from apertools.parsers import Sentinel, SentinelOrbit
+from .log import logger
 
 MAX_WORKERS = 20  # For parallel downloading
 
@@ -42,18 +43,6 @@ PRECISE_ORBIT = "POEORB"
 RESTITUTED_ORBIT = "RESORB"
 DT_FMT = "%Y-%m-%dT%H:%M:%S"  # Used in sentinel API url
 # 2017-10-01T00:39:50
-
-logger = logging.Logger('sentineleof')
-
-
-def _set_logger_handler(level='INFO'):
-    logger.setLevel(level)
-    h = logging.StreamHandler()
-    h.setLevel(level)
-    format_ = '[%(asctime)s] [%(levelname)s %(filename)s] %(message)s'
-    fmt = logging.Formatter(format_, datefmt='%m/%d %H:%M:%S')
-    h.setFormatter(fmt)
-    logger.addHandler(h)
 
 
 def download_eofs(orbit_dts, missions=None, save_dir="."):
@@ -73,7 +62,7 @@ def download_eofs(orbit_dts, missions=None, save_dir="."):
             or having different length
     """
     # TODO: condense list of same dates, different hours?
-    if missions and all(m not in ('S1A', 'S1B') for m in missions):
+    if missions and all(m not in ("S1A", "S1B") for m in missions):
         raise ValueError('missions argument must be "S1A" or "S1B"')
     if missions and len(missions) != len(orbit_dts):
         raise ValueError("missions arg must be same length as orbit_dts")
@@ -92,7 +81,7 @@ def download_eofs(orbit_dts, missions=None, save_dir="."):
     for result in result_dt_dict:
         result.get()
         dt = result_dt_dict[result]
-        logger.info('Finished {}'.format(dt.date()))
+        logger.info("Finished {}".format(dt.date()))
 
 
 def eof_list(start_dt, mission, orbit_type=PRECISE_ORBIT):
@@ -117,23 +106,29 @@ def eof_list(start_dt, mission, orbit_type=PRECISE_ORBIT):
     response = requests.get(url)
     response.raise_for_status()
 
-    if response.json()['count'] < 1:
+    if response.json()["count"] < 1:
         if orbit_type == PRECISE_ORBIT:
-            logger.warning('No precise orbit files found for {} on {}, searching RESORB'.format(
-                mission, start_dt.strftime(DT_FMT)))
+            logger.warning(
+                "No precise orbit files found for {} on {}, searching RESORB".format(
+                    mission, start_dt.strftime(DT_FMT)
+                )
+            )
             return eof_list(start_dt, mission, orbit_type=RESTITUTED_ORBIT)
 
-        raise ValueError('No EOF files found for {} on {} at {}'.format(
-            start_dt.strftime(DT_FMT), mission, url))
+        raise ValueError(
+            "No EOF files found for {} on {} at {}".format(
+                start_dt.strftime(DT_FMT), mission, url
+            )
+        )
 
-    return [result['remote_url'] for result in response.json()['results']], orbit_type
+    return [result["remote_url"] for result in response.json()["results"]], orbit_type
 
 
 def _dedupe_links(links):
     out = [links[0]]
-    orb1 = SentinelOrbit(links[0].split('/')[-1])
+    orb1 = SentinelOrbit(links[0].split("/")[-1])
     for link in links[1:]:
-        if SentinelOrbit(link.split('/')[-1]).date != orb1.date:
+        if SentinelOrbit(link.split("/")[-1]).date != orb1.date:
             out.append(link)
     return out
 
@@ -142,10 +137,11 @@ def _pick_precise_file(links, sent_date):
     """Choose the precise file with (sent_date - 1, sent_date + 1)"""
     out = []
     for link in links:
-        so = SentinelOrbit(link.split('/')[-1])
+        so = SentinelOrbit(link.split("/")[-1])
         # hotfix until I figure out what the RAW processor is doing with the orbtimings
-        if ((so.start_time.date() == (sent_date - timedelta(days=1)).date())
-                and (so.stop_time.date() == (sent_date + timedelta(days=1)).date())):
+        if (so.start_time.date() == (sent_date - timedelta(days=1)).date()) and (
+            so.stop_time.date() == (sent_date + timedelta(days=1)).date()
+        ):
             out.append(link)
     return out
 
@@ -165,7 +161,7 @@ def _download_and_write(mission, dt, save_dir="."):
         cur_links, orbit_type = eof_list(dt, mission)
     except ValueError as e:  # 0 found for date
         logger.warning(e.args[0])
-        logger.warning('Skipping {}'.format(dt.strftime('%Y-%m-%d')))
+        logger.warning("Skipping {}".format(dt.strftime("%Y-%m-%d")))
         return
 
     cur_links = _dedupe_links(cur_links)
@@ -175,7 +171,7 @@ def _download_and_write(mission, dt, save_dir="."):
     # RESORB has multiple overlapping
     # assert len(cur_links) <= 2, "Too many links found for {}: {}".format(dt, cur_links)
     for link in cur_links:
-        fname = os.path.join(save_dir, link.split('/')[-1])
+        fname = os.path.join(save_dir, link.split("/")[-1])
         if os.path.isfile(fname):
             logger.info("%s already exists, skipping download.", link)
             return
@@ -184,57 +180,67 @@ def _download_and_write(mission, dt, save_dir="."):
         response = requests.get(link)
         response.raise_for_status()
         logger.info("Saving to %s", fname)
-        with open(fname, 'wb') as f:
+        with open(fname, "wb") as f:
             f.write(response.content)
 
 
 def find_current_eofs(cur_path):
     """Returns a list of SentinelOrbit objects located in `cur_path`"""
     return sorted(
-        [SentinelOrbit(filename) for filename in glob.glob(os.path.join(cur_path, '*EOF'))])
+        [
+            SentinelOrbit(filename)
+            for filename in glob.glob(os.path.join(cur_path, "*EOF"))
+        ]
+    )
 
 
 def find_unique_safes(search_path):
     file_set = set()
-    for filename in glob.glob(os.path.join(search_path, 'S1*')):
+    for filename in glob.glob(os.path.join(search_path, "S1*")):
         try:
             parsed_file = Sentinel(filename)
         except ValueError:  # Doesn't match a sentinel file
-            logger.debug('Skipping {}, not a Sentinel 1 file'.format(filename))
+            logger.debug("Skipping {}, not a Sentinel 1 file".format(filename))
             continue
         file_set.add(parsed_file)
     return file_set
 
 
-def find_scenes_to_download(search_path='./', save_dir="./"):
+def find_scenes_to_download(search_path="./", save_dir="./"):
     """Parse the search_path directory for any Sentinel 1 products' date and mission"""
     orbit_dts = []
     missions = []
     # Check for already-downloaded orbit files, skip ones we have
-    print(f"save_dir {save_dir}")
     current_eofs = find_current_eofs(save_dir)
 
     # Now loop through each Sentinel scene in search_path
     for parsed_file in find_unique_safes(search_path):
 
-        if parsed_file.start_time in orbit_dts:  # start_time is a datetime, already found
+        if (
+            parsed_file.start_time in orbit_dts
+        ):  # start_time is a datetime, already found
             continue
         if any(parsed_file.start_time in orbit for orbit in current_eofs):
-            logger.info('Skipping {}, already have EOF file'.format(
-                os.path.splitext(parsed_file.filename)[0]))
+            logger.info(
+                "Skipping {}, already have EOF file".format(
+                    os.path.splitext(parsed_file.filename)[0]
+                )
+            )
             continue
 
-        logger.info("Downloading precise orbits for {} on {}".format(
-            parsed_file.mission, parsed_file.start_time.strftime('%Y-%m-%d')))
+        logger.info(
+            "Downloading precise orbits for {} on {}".format(
+                parsed_file.mission, parsed_file.start_time.strftime("%Y-%m-%d")
+            )
+        )
         orbit_dts.append(parsed_file.start_time)
         missions.append(parsed_file.mission)
 
     return orbit_dts, missions
 
 
-def main(search_path='.', mission=None, date=None, save_dir="."):
+def main(search_path=".", mission=None, date=None, save_dir="."):
     """Function used for entry point to download eofs"""
-    _set_logger_handler()
 
     if not os.path.exists(save_dir):
         logger.info("Creating directory for output: %s", save_dir)
@@ -248,9 +254,13 @@ def main(search_path='.', mission=None, date=None, save_dir="."):
         missions = list(mission)
     else:
         # No command line args given: search current directory
-        orbit_dts, missions = find_scenes_to_download(search_path=search_path, save_dir=save_dir)
+        orbit_dts, missions = find_scenes_to_download(
+            search_path=search_path, save_dir=save_dir
+        )
         if not orbit_dts:
-            logger.info("No Sentinel products found in directory %s, exiting", search_path)
+            logger.info(
+                "No Sentinel products found in directory %s, exiting", search_path
+            )
             return 0
 
     download_eofs(orbit_dts, missions=missions, save_dir=save_dir)

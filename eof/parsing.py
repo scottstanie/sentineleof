@@ -1,6 +1,7 @@
 """Module for parsing the orbit state vectors (OSVs) from the .EOF file"""
 from datetime import datetime
 from xml.etree import ElementTree
+from .log import logger
 
 
 def parse_utc_string(timestring):
@@ -24,7 +25,7 @@ def parse_orbit(
     min_time=datetime(1900, 1, 1),
     max_time=datetime(2100, 1, 1),
 ):
-    print(f"parsing OSVs from {eof_filename} between {min_time} and {max_time}")
+    logger.info(f"parsing OSVs from {eof_filename} between {min_time} and {max_time}")
     tree = ElementTree.parse(eof_filename)
     root = tree.getroot()
     all_osvs = []
