@@ -8,27 +8,30 @@ from eof import download
 @click.command()
 @click.option("--date", "-d", help="Validity date for EOF to download")
 @click.option(
-    '--path',
+    '--search-path',
+    '-p',
     type=click.Path(exists=False, file_okay=False, writable=True),
     default='.',
-    help="Path of interest for finding Sentinel products. ")
-@click.option(
-    "--mission",
-    "-m",
-    type=click.Choice(["S1A", "S1B"]),
-    help="Sentinel satellite to download (None gets both S1A and S1B)")
+    help="Path of interest for finding Sentinel products. ",
+    show_default=True)
 @click.option(
     '--save-dir',
     type=click.Path(exists=False, file_okay=False, writable=True),
     default='.',
-    help="Directory to save output .EOF files into")
-def cli(date, path, mission, save_dir):
+    help="Directory to save output .EOF files into",
+    show_default=True)
+@click.option(
+    "--mission",
+    "-m",
+    type=click.Choice(["S1A", "S1B"]),
+    help="Optionally specify Sentinel satellite to download (default: gets both S1A and S1B)")
+def cli(date, search_path, save_dir, mission):
     """Download Sentinel precise orbit files.
 
-    Saves files to current directory, regardless of what --path
-    is given to search.
+    Saves files to `save-dir` (default = current directory)
 
     Download EOFs for specific date, or searches for Sentinel files in --path.
+    Will find both ".SAFE" and ".zip" files matching Sentinel-1 naming convention.
     With no arguments, searches current directory for Sentinel 1 products
     """
-    download.main(path=path, mission=mission, date=date, save_dir=save_dir)
+    download.main(search_path=search_path, mission=mission, date=date, save_dir=save_dir)

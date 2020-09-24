@@ -22,6 +22,13 @@ eof
 ```
 and download either the precise orbit files, or, if the POEORB files have not been released, the restituted RESORB files.
 
+Running
+```bash
+eof --search-path /path/to/safe_files/ --save-dir ./orbits/
+```
+will search `/path/to/safe_files/` for Sentinel-1 scenes, and save the `.EOF` files to `./orbits/` (creating it if it does not exist)
+
+
 ## Command Line Interface Reference
 
 The command line tool in `cli.py` was made using the [click](https://pocco-click.readthedocs.io/en/latest/) library.
@@ -32,17 +39,25 @@ Usage: eof [OPTIONS]
 
   Download Sentinel precise orbit files.
 
-  Saves files to current directory, regardless of what --path is given to
-  search.
+  Saves files to `save-dir` (default = current directory)
 
   Download EOFs for specific date, or searches for Sentinel files in --path.
-  With no arguments, searches current directory for Sentinel 1 products
+  Will find both ".SAFE" and ".zip" files matching Sentinel-1 naming
+  convention. With no arguments, searches current directory for Sentinel 1
+  products
 
 Options:
-  -r, --date TEXT          Validity date for EOF to download
-  -m, --mission [S1A|S1B]  Sentinel satellite to download (None gets both S1A
-                           and S1B)
-  --help                   Show this message and exit.
+  -d, --date TEXT              Validity date for EOF to download
+  -p, --search-path DIRECTORY  Path of interest for finding Sentinel products.
+                               [default: .]
+
+  --save-dir DIRECTORY         Directory to save output .EOF files into
+                               [default: .]
+
+  -m, --mission [S1A|S1B]      Optionally specify Sentinel satellite to
+                               download (default: gets both S1A and S1B)
+
+  --help                       Show this message and exit.
 ```
 
 To use the function from python, you can pass a list of dates:
@@ -52,52 +67,4 @@ from eof.download import download_eofs
 
 download_eofs([datetime.datetime(2018, 5, 3, 0, 0, 0)])
 download_eofs(['20180503', '20180507'], ['S1A', 'S1B'])
-```
-
-#### parsers.py
-
-Class to deal with extracting relevant data from SAR filenames.
-Example:
-
-```python
-from parsers import Sentinel
-
-parser = Sentinel('S1A_IW_SLC__1SDV_20180408T043025_20180408T043053_021371_024C9B_1B70.zip')
-parser.start_time
-    datetime.datetime(2018, 4, 8, 4, 30, 25)
-
-parser.mission
-    'S1A'
-
-parser.polarization
-    'DV'
-parser.full_parse
-('S1A',
- 'IW',
- 'SLC',
- '_',
- '1',
- 'S',
- 'DV',
- '20180408T043025',
- '20180408T043053',
- '021371',
- '024C9B',
- '1B70')
-
-
-parser.field_meanings
-('Mission',
- 'Beam',
- 'Product type',
- 'Resolution class',
- 'Product level',
- 'Product class',
- 'Polarization',
- 'Start datetime',
- 'Stop datetime',
- 'Orbit number',
- 'data-take identified',
- 'product unique id')
-
 ```

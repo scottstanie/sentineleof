@@ -194,9 +194,9 @@ def find_current_eofs(cur_path):
         [SentinelOrbit(filename) for filename in glob.glob(os.path.join(cur_path, '*EOF'))])
 
 
-def find_unique_safes(startpath):
+def find_unique_safes(search_path):
     file_set = set()
-    for filename in glob.glob(os.path.join(startpath, 'S1*')):
+    for filename in glob.glob(os.path.join(search_path, 'S1*')):
         try:
             parsed_file = Sentinel(filename)
         except ValueError:  # Doesn't match a sentinel file
@@ -206,16 +206,16 @@ def find_unique_safes(startpath):
     return file_set
 
 
-def find_sentinel_products(startpath='./', save_dir="./"):
-    """Parse the startpath directory for any Sentinel 1 products' date and mission"""
+def find_sentinel_products(search_path='./', save_dir="./"):
+    """Parse the search_path directory for any Sentinel 1 products' date and mission"""
     orbit_dts = []
     missions = []
     # Check for already-downloaded orbit files, skip ones we have
     print(f"save_dir {save_dir}")
     current_eofs = find_current_eofs(save_dir)
 
-    # Now loop through each Sentinel scene in startpath
-    for parsed_file in find_unique_safes(startpath):
+    # Now loop through each Sentinel scene in search_path
+    for parsed_file in find_unique_safes(search_path):
 
         if parsed_file.start_time in orbit_dts:  # start_time is a datetime, already found
             continue
@@ -232,7 +232,7 @@ def find_sentinel_products(startpath='./', save_dir="./"):
     return orbit_dts, missions
 
 
-def main(path='.', mission=None, date=None, save_dir="."):
+def main(search_path='.', mission=None, date=None, save_dir="."):
     """Function used for entry point to download eofs"""
     _set_logger_handler()
 
@@ -248,9 +248,9 @@ def main(path='.', mission=None, date=None, save_dir="."):
         missions = list(mission)
     else:
         # No command line args given: search current directory
-        orbit_dts, missions = find_sentinel_products(startpath=path, save_dir=save_dir)
+        orbit_dts, missions = find_sentinel_products(search_path=search_path, save_dir=save_dir)
         if not orbit_dts:
-            logger.info("No Sentinel products found in directory %s, exiting", path)
+            logger.info("No Sentinel products found in directory %s, exiting", search_path)
             return 0
 
     download_eofs(orbit_dts, missions=missions, save_dir=save_dir)
