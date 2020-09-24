@@ -206,7 +206,7 @@ def find_unique_safes(search_path):
     return file_set
 
 
-def find_sentinel_products(search_path='./', save_dir="./"):
+def find_scenes_to_download(search_path='./', save_dir="./"):
     """Parse the search_path directory for any Sentinel 1 products' date and mission"""
     orbit_dts = []
     missions = []
@@ -248,7 +248,7 @@ def main(search_path='.', mission=None, date=None, save_dir="."):
         missions = list(mission)
     else:
         # No command line args given: search current directory
-        orbit_dts, missions = find_sentinel_products(search_path=search_path, save_dir=save_dir)
+        orbit_dts, missions = find_scenes_to_download(search_path=search_path, save_dir=save_dir)
         if not orbit_dts:
             logger.info("No Sentinel products found in directory %s, exiting", search_path)
             return 0
