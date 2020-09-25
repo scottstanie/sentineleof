@@ -25,7 +25,12 @@ def parse_orbit(
     min_time=datetime(1900, 1, 1),
     max_time=datetime(2100, 1, 1),
 ):
-    logger.info(f"parsing OSVs from {eof_filename} between {min_time} and {max_time}")
+    logger.info(
+        "parsing OSVs from %s between %s and %s",
+        eof_filename,
+        min_time,
+        max_time,
+    )
     tree = ElementTree.parse(eof_filename)
     root = tree.getroot()
     all_osvs = []
@@ -46,7 +51,7 @@ def parse_orbit(
 
 def write_orbinfo(orbit_tuples, outname="out.orbtiming"):
     """Write file with orbit states parsed into simpler format
-    
+
     seconds x y z vx vy vz ax ay az
     """
     with open(outname, "w") as f:
@@ -57,4 +62,3 @@ def write_orbinfo(orbit_tuples, outname="out.orbtiming"):
         for tup in orbit_tuples:
             # final 0.0 0.0 0.0 is ax, ax, az accelerations
             f.write(" ".join(map(str, tup)) + " 0.0 0.0 0.0\n")
-
