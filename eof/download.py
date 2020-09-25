@@ -26,7 +26,6 @@ See parsers for Sentinel file naming description
 import os
 import glob
 import itertools
-import logging
 import requests
 from multiprocessing.pool import ThreadPool
 from datetime import timedelta
@@ -45,13 +44,14 @@ DT_FMT = "%Y-%m-%dT%H:%M:%S"  # Used in sentinel API url
 # 2017-10-01T00:39:50
 
 
-def download_eofs(orbit_dts, missions=None, save_dir="."):
+def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir="."):
     """Downloads and saves EOF files for specific dates
 
     Args:
         orbit_dts (list[str] or list[datetime.datetime])
         missions (list[str]): optional, to specify S1A or S1B
             No input downloads both, must be same len as orbit_dts
+        sentinel_file (str): path to Sentinel-1 filename to download one .EOF for
         save_dir (str): directory to save the EOF files into
 
     Returns:
@@ -59,11 +59,14 @@ def download_eofs(orbit_dts, missions=None, save_dir="."):
 
     Raises:
         ValueError - for missions argument not being one of 'S1A', 'S1B',
-            or having different length
+            having different lengths, or `sentinel_file` being invalid
     """
     # TODO: condense list of same dates, different hours?
     if missions and all(m not in ("S1A", "S1B") for m in missions):
         raise ValueError('missions argument must be "S1A" or "S1B"')
+    if sentinel_file:
+        sent = Sentinel(sentinel_file)
+        orbit_dts, missions = [sent.start_time], [sent.mission]
     if missions and len(missions) != len(orbit_dts):
         raise ValueError("missions arg must be same length as orbit_dts")
     if not missions:
@@ -239,7 +242,7 @@ def find_scenes_to_download(search_path="./", save_dir="./"):
     return orbit_dts, missions
 
 
-def main(search_path=".", mission=None, date=None, save_dir="."):
+def main(search_path=".", save_dir=",", sentinel_file=None, mission=None, date=None):
     """Function used for entry point to download eofs"""
 
     if not os.path.exists(save_dir):
@@ -249,7 +252,10 @@ def main(search_path=".", mission=None, date=None, save_dir="."):
     if (mission and not date) or (date and not mission):
         raise ValueError("Must specify date and mission together")
 
-    if date:
+    if sentinel_file:
+        # Handle parsing in download_eof
+        orbit_dts, missions = None, None
+    elif date:
         orbit_dts = [date]
         missions = list(mission)
     else:
@@ -263,4 +269,9 @@ def main(search_path=".", mission=None, date=None, save_dir="."):
             )
             return 0
 
-    download_eofs(orbit_dts, missions=missions, save_dir=save_dir)
+    download_eofs(
+        orbit_dts=orbit_dts,
+        missions=missions,
+        sentinel_file=sentinel_file,
+        save_dir=save_dir,
+    )
