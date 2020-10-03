@@ -28,7 +28,6 @@ setuptools.setup(
         "requests",
         "click",
         "python-dateutil",
-        "apertools",
     ],
     entry_points={
         "console_scripts": [

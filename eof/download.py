@@ -30,7 +30,7 @@ import requests
 from multiprocessing.pool import ThreadPool
 from datetime import timedelta
 from dateutil.parser import parse
-from apertools.parsers import Sentinel, SentinelOrbit
+from .products import Sentinel, SentinelOrbit
 from .log import logger
 
 MAX_WORKERS = 20  # For parallel downloading
