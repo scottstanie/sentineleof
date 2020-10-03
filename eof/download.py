@@ -257,7 +257,7 @@ def main(search_path=".", save_dir=",", sentinel_file=None, mission=None, date=N
         orbit_dts, missions = None, None
     elif date:
         orbit_dts = [date]
-        missions = list(mission)
+        missions = [mission]
     else:
         # No command line args given: search current directory
         orbit_dts, missions = find_scenes_to_download(
