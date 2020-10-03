@@ -5,6 +5,7 @@ import datetime
 import os
 import responses
 
+from unittest import mock
 from eof import download
 
 
@@ -138,3 +139,13 @@ class TestEOF(unittest.TestCase):
 
     def test_main_error_args(self):
         self.assertRaises(ValueError, download.main, search_path='/notreal', mission='S1A')
+
+    @mock.patch('eof.download.download_eofs')
+    def test_mission(self, download_eofs):
+        download.main(mission='S1A', date='20200101')
+        download_eofs.assert_called_once_with(
+            missions=['S1A'],
+            orbit_dts=['20200101'],
+            sentinel_file=None,
+            save_dir=',',
+        )
