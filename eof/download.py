@@ -55,7 +55,7 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
         save_dir (str): directory to save the EOF files into
 
     Returns:
-        None
+        list[str]: all filenames of saved orbit files
 
     Raises:
         ValueError - for missions argument not being one of 'S1A', 'S1B',
@@ -81,10 +81,13 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
         pool.apply_async(_download_and_write, (mission, dt, save_dir)): dt
         for mission, dt in zip(missions, orbit_dts)
     }
+    filenames = []
     for result in result_dt_dict:
-        result.get()
+        cur_filenames = result.get()
         dt = result_dt_dict[result]
-        logger.info("Finished {}".format(dt.date()))
+        logger.info("Finished {}, saved to {}".format(dt.date(), cur_filenames))
+        filenames.extend(cur_filenames)
+    return filenames
 
 
 def eof_list(start_dt, mission, orbit_type=PRECISE_ORBIT):
@@ -158,7 +161,7 @@ def _download_and_write(mission, dt, save_dir="."):
         save_dir (str): directory to save the EOF files into
 
     Returns:
-        None
+        list[str]: Filenames to which the orbit files have been saved
     """
     try:
         cur_links, orbit_type = eof_list(dt, mission)
@@ -173,11 +176,14 @@ def _download_and_write(mission, dt, save_dir="."):
 
     # RESORB has multiple overlapping
     # assert len(cur_links) <= 2, "Too many links found for {}: {}".format(dt, cur_links)
+    saved_files = []
     for link in cur_links:
         fname = os.path.join(save_dir, link.split("/")[-1])
         if os.path.isfile(fname):
             logger.info("%s already exists, skipping download.", link)
-            return
+            # TODO: If I return here.. do I ever want to iterate
+            # and save multiple links?
+            return [fname]
 
         logger.info("Downloading %s", link)
         response = requests.get(link)
@@ -185,6 +191,8 @@ def _download_and_write(mission, dt, save_dir="."):
         logger.info("Saving to %s", fname)
         with open(fname, "wb") as f:
             f.write(response.content)
+        saved_files.append(fname)
+    return saved_files
 
 
 def find_current_eofs(cur_path):
@@ -269,7 +277,7 @@ def main(search_path=".", save_dir=",", sentinel_file=None, mission=None, date=N
             )
             return 0
 
-    download_eofs(
+    return download_eofs(
         orbit_dts=orbit_dts,
         missions=missions,
         sentinel_file=sentinel_file,
