@@ -12,6 +12,12 @@ Tool to download Sentinel 1 precise/restituted orbit files (.EOF files) for proc
 pip install sentineleof
 ```
 
+or through conda:
+
+```bash
+conda install -c conda-forge sentineleof
+```
+
 This will put the executable `eof` on your path 
 
 
