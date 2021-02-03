@@ -12,4 +12,5 @@ def _set_logger_handler(level="INFO"):
 
 
 logger = logging.Logger("sentineleof")
-_set_logger_handler()
+logger.addHandler(logging.NullHandler())
+# _set_logger_handler()
