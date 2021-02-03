@@ -23,7 +23,7 @@ from eof import download
 )
 @click.option(
     "--sentinel-file",
-    type=click.Path(exists=True, file_okay=True, dir_okay=True),
+    type=click.Path(exists=False, file_okay=True, dir_okay=True),
     help="Specify path to download only 1 .EOF for a Sentinel-1 file/folder",
     show_default=True,
 )
