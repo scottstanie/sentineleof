@@ -3,6 +3,7 @@ CLI tool for downloading Sentinel 1 EOF files
 """
 import click
 from eof import download
+from eof import log
 
 
 @click.command()
@@ -23,7 +24,7 @@ from eof import download
 )
 @click.option(
     "--sentinel-file",
-    type=click.Path(exists=True, file_okay=True, dir_okay=True),
+    type=click.Path(exists=False, file_okay=True, dir_okay=True),
     help="Specify path to download only 1 .EOF for a Sentinel-1 file/folder",
     show_default=True,
 )
@@ -43,6 +44,7 @@ def cli(search_path, save_dir, sentinel_file, date, mission):
     Will find both ".SAFE" and ".zip" files matching Sentinel-1 naming convention.
     With no arguments, searches current directory for Sentinel 1 products
     """
+    log._set_logger_handler()
     download.main(
         search_path=search_path,
         save_dir=save_dir,
