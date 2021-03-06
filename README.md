@@ -1,5 +1,4 @@
 [![Build Status](https://travis-ci.org/scottstanie/sentineleof.svg?branch=master)](https://travis-ci.org/scottstanie/sentineleof) 
-[![Coverage Status](https://coveralls.io/repos/github/scottstanie/sentineleof/badge.svg?branch=master)](https://coveralls.io/github/scottstanie/sentineleof?branch=master)
 
 # Sentinel EOF
 
