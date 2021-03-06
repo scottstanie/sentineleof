@@ -52,13 +52,16 @@ Usage: eof [OPTIONS]
   products
 
 Options:
-  -d, --date TEXT              Validity date for EOF to download
   -p, --search-path DIRECTORY  Path of interest for finding Sentinel products.
                                [default: .]
 
   --save-dir DIRECTORY         Directory to save output .EOF files into
                                [default: .]
 
+  --sentinel-file PATH         Specify path to download only 1 .EOF for a
+                               Sentinel-1 file/folder
+
+  -d, --date TEXT              Validity date for EOF to download
   -m, --mission [S1A|S1B]      Optionally specify Sentinel satellite to
                                download (default: gets both S1A and S1B)
 
