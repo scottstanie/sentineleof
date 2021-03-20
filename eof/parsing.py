@@ -16,9 +16,9 @@ class EOFLinkFinder(HTMLParser):
     >>> resp = requests.get("http://aux.sentinel1.eo.esa.int/POEORB/2021/03/18/")
     >>> parser = EOFLinkFinder()
     >>> parser.feed(resp.text)
-    >>> print(parser.eof_links)
-    {'S1B_OPER_AUX_POEORB_OPOD_20210318T111602_V20210225T225942_20210227T005942.EOF',\
- 'S1A_OPER_AUX_POEORB_OPOD_20210318T121438_V20210225T225942_20210227T005942.EOF'}
+    >>> print(sorted(parser.eof_links))
+    ['S1A_OPER_AUX_POEORB_OPOD_20210318T121438_V20210225T225942_20210227T005942.EOF', \
+'S1B_OPER_AUX_POEORB_OPOD_20210318T111602_V20210225T225942_20210227T005942.EOF']
     """
 
     def __init__(self):
