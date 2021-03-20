@@ -114,11 +114,14 @@ S1A_OPER_AUX_POEORB_OPOD_20210310T121945_V20210217T225942_20210219T005942.EOF'],
     # care about the "validity date"
     # TODO: take this out once the new ESA API is up.
     if orbit_type == PRECISE_ORBIT:
-        # ESA seems to reliably upload the POEORB files 3 weeks after the flyover
+        # ESA seems to reliably upload the POEORB files at noon UTC, 3 weeks after the flyover
         validity_creation_diff = timedelta(days=20, hours=12)
     else:
         validity_creation_diff = timedelta(hours=4)
-    search_dt = start_dt + validity_creation_diff
+    # truncate the start datetime to midnight to make sure the sure straddles the date
+    search_dt = (
+        datetime(start_dt.year, start_dt.month, start_dt.day) + validity_creation_diff
+    )
     url = BASE_URL.format(orbit_type=orbit_type, dt=search_dt.strftime(DT_FMT))
 
     logger.info("Searching for EOFs at {}".format(url))
