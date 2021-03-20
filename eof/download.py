@@ -28,27 +28,29 @@ import glob
 import itertools
 import requests
 from multiprocessing.pool import ThreadPool
-from datetime import timedelta
+from datetime import timedelta, datetime
 from dateutil.parser import parse
+from .parsing import EOFLinkFinder
 from .products import Sentinel, SentinelOrbit
 from .log import logger
 
 MAX_WORKERS = 20  # For parallel downloading
 
-BASE_URL = "https://qc.sentinel1.eo.esa.int/api/v1/?product_type=AUX_{orbit_type}\
-&sentinel1__mission={mission}&validity_start__lt={start_dt}&validity_stop__gt={stop_dt}"
+BASE_URL = "http://aux.sentinel1.eo.esa.int/{orbit_type}/{dt}/"
+DT_FMT = "%Y/%m/%d"
+# e.g. "http://aux.sentinel1.eo.esa.int/POEORB/2021/03/18/"
+# This page has links with relative urls in the <a> tags, such as:
+# S1A_OPER_AUX_POEORB_OPOD_20210318T121438_V20210225T225942_20210227T005942.EOF
 
 PRECISE_ORBIT = "POEORB"
 RESTITUTED_ORBIT = "RESORB"
-DT_FMT = "%Y-%m-%dT%H:%M:%S"  # Used in sentinel API url
-# 2017-10-01T00:39:50
 
 
 def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir="."):
     """Downloads and saves EOF files for specific dates
 
     Args:
-        orbit_dts (list[str] or list[datetime.datetime])
+        orbit_dts (list[str] or list[datetime.datetime]): datetime for orbit coverage
         missions (list[str]): optional, to specify S1A or S1B
             No input downloads both, must be same len as orbit_dts
         sentinel_file (str): path to Sentinel-1 filename to download one .EOF for
@@ -101,18 +103,48 @@ def eof_list(start_dt, mission, orbit_type=PRECISE_ORBIT):
 
     Raises:
         ValueError: if start_dt returns no results
+
+    Usage:
+    >>> from datetime import datetime
+    >>> eof_list(datetime(2021, 2, 18), "S1A")
+    (['http://aux.sentinel1.eo.esa.int/POEORB/2021/03/10/\
+S1A_OPER_AUX_POEORB_OPOD_20210310T121945_V20210217T225942_20210219T005942.EOF'], 'POEORB')
     """
-    url = BASE_URL.format(
-        orbit_type=orbit_type,
-        mission=mission,
-        start_dt=(start_dt - timedelta(minutes=2)).strftime(DT_FMT),
-        stop_dt=(start_dt + timedelta(minutes=2)).strftime(DT_FMT),
+    # Unfortunately, the archive page stores the file based on "creation date", but we
+    # care about the "validity date"
+    # TODO: take this out once the new ESA API is up.
+    if orbit_type == PRECISE_ORBIT:
+        # ESA seems to reliably upload the POEORB files at noon UTC, 3 weeks after the flyover
+        validity_creation_diff = timedelta(days=20, hours=12)
+    else:
+        validity_creation_diff = timedelta(hours=4)
+    # truncate the start datetime to midnight to make sure the sure straddles the date
+    search_dt = (
+        datetime(start_dt.year, start_dt.month, start_dt.day) + validity_creation_diff
     )
+    url = BASE_URL.format(orbit_type=orbit_type, dt=search_dt.strftime(DT_FMT))
+
     logger.info("Searching for EOFs at {}".format(url))
     response = requests.get(url)
+    if response.status_code == 404:
+        if orbit_type == PRECISE_ORBIT:
+            logger.warning(
+                "Precise orbits not avilable yet for {}, trying RESORB".format(
+                    search_dt
+                )
+            )
+            return eof_list(start_dt, mission, orbit_type=RESTITUTED_ORBIT)
+        else:
+            raise ValueError("Orbits not avilable yet for {}".format(search_dt))
+    # Check for any other problem
     response.raise_for_status()
 
-    if response.json()["count"] < 1:
+    parser = EOFLinkFinder()
+    parser.feed(response.text)
+    # Append the test url, since the links on the page are relative (don't contain full url)
+    links = [url + link for link in parser.eof_links if link.startswith(mission)]
+
+    if len(links) < 1:
         if orbit_type == PRECISE_ORBIT:
             logger.warning(
                 "No precise orbit files found for {} on {}, searching RESORB".format(
@@ -126,8 +158,7 @@ def eof_list(start_dt, mission, orbit_type=PRECISE_ORBIT):
                 start_dt.strftime(DT_FMT), mission, url
             )
         )
-
-    return [result["remote_url"] for result in response.json()["results"]], orbit_type
+    return links, orbit_type
 
 
 def _dedupe_links(links):
@@ -175,7 +206,6 @@ def _download_and_write(mission, dt, save_dir="."):
         cur_links = _pick_precise_file(cur_links, dt)
 
     # RESORB has multiple overlapping
-    # assert len(cur_links) <= 2, "Too many links found for {}: {}".format(dt, cur_links)
     saved_files = []
     for link in cur_links:
         fname = os.path.join(save_dir, link.split("/")[-1])
