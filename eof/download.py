@@ -28,7 +28,7 @@ import glob
 import itertools
 import requests
 from multiprocessing.pool import ThreadPool
-from datetime import timedelta
+from datetime import timedelta, datetime
 from dateutil.parser import parse
 from .parsing import EOFLinkFinder
 from .products import Sentinel, SentinelOrbit
@@ -50,7 +50,7 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
     """Downloads and saves EOF files for specific dates
 
     Args:
-        orbit_dts (list[str] or list[datetime.datetime])
+        orbit_dts (list[str] or list[datetime.datetime]): datetime for orbit coverage
         missions (list[str]): optional, to specify S1A or S1B
             No input downloads both, must be same len as orbit_dts
         sentinel_file (str): path to Sentinel-1 filename to download one .EOF for
@@ -106,13 +106,34 @@ def eof_list(start_dt, mission, orbit_type=PRECISE_ORBIT):
 
     Usage:
     >>> from datetime import datetime
-    >>> eof_list(datetime(2021, 3, 18), "S1A")
-    (['http://aux.sentinel1.eo.esa.int/POEORB/2021/03/18/\
-S1A_OPER_AUX_POEORB_OPOD_20210318T121438_V20210225T225942_20210227T005942.EOF'], 'POEORB')
+    >>> eof_list(datetime(2021, 2, 18), "S1A")
+    (['http://aux.sentinel1.eo.esa.int/POEORB/2021/03/10/\
+S1A_OPER_AUX_POEORB_OPOD_20210310T121945_V20210217T225942_20210219T005942.EOF'], 'POEORB')
     """
-    url = BASE_URL.format(orbit_type=orbit_type, dt=start_dt.strftime(DT_FMT))
+    # Unfortunately, the archive page stores the file based on "creation date", but we
+    # care about the "validity date"
+    # TODO: take this out once the new ESA API is up.
+    if orbit_type == PRECISE_ORBIT:
+        # ESA seems to reliably upload the POEORB files 3 weeks after the flyover
+        validity_creation_diff = timedelta(days=20, hours=12)
+    else:
+        validity_creation_diff = timedelta(hours=4)
+    search_dt = start_dt + validity_creation_diff
+    url = BASE_URL.format(orbit_type=orbit_type, dt=search_dt.strftime(DT_FMT))
+
     logger.info("Searching for EOFs at {}".format(url))
     response = requests.get(url)
+    if response.status_code == 404:
+        if orbit_type == PRECISE_ORBIT:
+            logger.warning(
+                "Precise orbits not avilable yet for {}, trying RESORB".format(
+                    search_dt
+                )
+            )
+            return eof_list(start_dt, mission, orbit_type=RESTITUTED_ORBIT)
+        else:
+            raise ValueError("Orbits not avilable yet for {}".format(search_dt))
+    # Check for any other problem
     response.raise_for_status()
 
     parser = EOFLinkFinder()
