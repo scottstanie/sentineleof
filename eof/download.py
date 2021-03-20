@@ -42,6 +42,11 @@ DT_FMT = "%Y/%m/%d"
 # This page has links with relative urls in the <a> tags, such as:
 # S1A_OPER_AUX_POEORB_OPOD_20210318T121438_V20210225T225942_20210227T005942.EOF
 
+API_URL = "https://scihub.copernicus.eu/gnss/search/"
+# authentication and timeout for the requests call
+AUTH = ("gnssguest", "gnssguest")
+TIMEOUT = 20
+
 PRECISE_ORBIT = "POEORB"
 RESTITUTED_ORBIT = "RESORB"
 
@@ -312,154 +317,102 @@ def main(search_path=".", save_dir=",", sentinel_file=None, mission=None, date=N
     )
 
 
-def catch(sensor="S1A", osvtype=PRECISE_ORBIT, start=None, stop=None, timeout=20):
+def eof_list_newapi(search_dt, mission=None, orbit_type=PRECISE_ORBIT):
+    """Find available orbit files through scihub API
+
+    Inputs:
+        mission: str (choices = {'S1A', 'S1B'})
+            optionally specify the S1 mission(s). None will search for both.
+        search_dt: datetime
+            The datetime over which the orbit file should span
+        orbit_type: {'POEORB', 'RESORB'}
+            Type of orbit (precise or restituted) to search for (default: POEORB)
+
+    Returns:
+        file_links (list[tuple])
+            the list of (filename, url) for matching orbit files
     """
-    check a server for files
-    Parameters
-    ----------
-    sensor: str or list
-        The S1 mission(s):
-            - 'S1A'
-            - 'S1B'
-            - ['S1A', 'S1B']
-    osvtype: {'POEORB', 'RESORB'}
-        Type of orbit (precise or restituted) to search for
-    start: str
-        the date to start searching for files in format YYYYmmddTHHMMSS
-    stop: str
-        the date to stop searching for files in format YYYYmmddTHHMMSS
-    Returns
-    -------
-    list
-        the product dictionary of the remote OSV files, with href
-    """
-    url = "https://scihub.copernicus.eu/gnss/search/"
-    auth = ("gnssguest", "gnssguest")
     # a dictionary for storing the url arguments
     query = {}
 
-    if osvtype == PRECISE_ORBIT:
+    if orbit_type == PRECISE_ORBIT:
         query["producttype"] = "AUX_POEORB"
-    elif osvtype == RESTITUTED_ORBIT:
+    elif orbit_type == RESTITUTED_ORBIT:
         query["producttype"] = "AUX_RESORB"
     else:
-        raise ValueError("osvtype must be either 'POE' or 'RES'")
+        raise ValueError("orbit_type must be either 'POE' or 'RES'")
 
-    if sensor in ["S1A", "S1B"]:
-        query["platformname"] = "Sentinel-1"
-        # filename starts w/ sensor
-        query["filename"] = "{}*".format(sensor)
-    elif sorted(sensor) == ["S1A", "S1B"]:
-        query["platformname"] = "Sentinel-1"
-    else:
-        raise RuntimeError("unsupported input for parameter sensor")
+    query["platformname"] = "Sentinel-1"
+    if mission not in ["S1A", "S1B", None]:
+        raise ValueError("`mission` must be 'S1A', 'S1B', or None")
+    if mission is not None:
+        # filename starts w/ mission
+        query["filename"] = "{}*".format(mission)
 
-    # the collection of files to be returned
-    collection = []
-    # set the defined date or the date of the first existing OSV file otherwise
-    # two days are added/subtracted from the defined start and stop dates since the
-    # online query does only allow for searching the start time; hence, if e.g.
-    # the start date is 2018-01-01T000000, the query would not return the corresponding
-    # file, whose start date is 2017-12-31 (V20171231T225942_20180102T005942)
-    if start is not None:
-        date_start = parse(start).strftime("%Y-%m-%dT%H:%M:%SZ")
+    # The search window must start before the validity start, and end after the validity end
+    if orbit_type == PRECISE_ORBIT:
+        # truncate the start datetime to midnight to make sure the sure straddles the date
+        base_dt = datetime(search_dt.year, search_dt.month, search_dt.day)
+        start_dt = base_dt - timedelta(days=1)
+        stop_dt = base_dt + timedelta(days=1, hours=23, minutes=59)
     else:
-        date_start = datetime.strptime("2014-07-31", "%Y-%m-%d").strftime(
-            "%Y-%m-%dT%H:%M:%SZ"
-        )
-    # set the defined date or the current date otherwise
-    if stop is not None:
-        date_stop = parse(stop).strftime("%Y-%m-%dT%H:%M:%SZ")
-    else:
-        date_stop = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
-
-    # append the time frame to the query dictionary
+        start_dt = search_dt - timedelta(hours=4)
+        stop_dt = search_dt + timedelta(hours=4)
+    date_start = start_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+    date_stop = stop_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
     query["beginPosition"] = "[{} TO {}]".format(date_start, date_stop)
     query["endPosition"] = "[{} TO {}]".format(date_start, date_stop)
-    import ipdb
 
-    ipdb.set_trace()
-    print("searching for new {} files".format(osvtype))
     query_list = []
     for keyword, value in query.items():
         query_elem = "{}:{}".format(keyword, value)
         query_list.append(query_elem)
     query_str = " ".join(query_list)
-    target = "{}?q={}&format=json".format(url, query_str)
-    print(target)
+    target = "{}?q={}&format=json".format(API_URL, query_str)
 
-    def _parse_gnsssearch_json(search_dict):
-        parsed_dict = {}
-        # Will return ['entry'] as dict if only one item
-        # If so just make a list
-        if isinstance(search_dict, dict):
-            search_dict = [search_dict]
-        for entry in search_dict:
-            id = entry["id"]
-            entry_dict = {}
+    logger.info("Searching for new {} files at url".format(orbit_type))
+    logger.info("'" + target + "'")
 
-            for key, value in entry.items():
-                if key == "title":
-                    entry_dict[key] = value
-                elif key == "id":
-                    entry_dict[key] = value
-                elif key == "ondemand":
-                    if value.lower() == "true":
-                        entry_dict[key] = True
-                    else:
-                        entry_dict[key] = False
-                elif key == "str":
-                    for elem in value:
-                        entry_dict[elem["name"]] = elem["content"]
-                elif key == "link":
-                    for elem in value:
-                        if "rel" in elem.keys():
-                            href_key = "href_" + elem["rel"]
-                            entry_dict[href_key] = elem["href"]
-                        else:
-                            entry_dict["href"] = elem["href"]
-                elif key == "date":
-                    for elem in value:
-                        entry_dict[elem["name"]] = parse(elem["content"])
-
-            parsed_dict[id] = entry_dict
-        return parsed_dict
-
-    def _parse_gnsssearch_response(response_json):
-        if "entry" in response_json.keys():
-            search_dict = response_json["entry"]
-            parsed_dict = _parse_gnsssearch_json(search_dict)
-        else:
-            parsed_dict = {}
-        return parsed_dict
-
-    response = requests.get(target, auth=auth, timeout=timeout)
+    response = requests.get(target, auth=AUTH, timeout=timeout)
     response.raise_for_status()
     response_json = response.json()["feed"]
     total_results = response_json["opensearch:totalResults"]
-    print("found {} OSV results".format(total_results))
+    logger.info("Found {} OSV results".format(total_results))
     subquery = [
         link["href"] for link in response_json["link"] if link["rel"] == "self"
     ][0]
-    if int(total_results) > 10:
-        subquery = subquery.replace("rows=10", "rows=100")
 
-    while subquery:
-        subquery_response = requests.get(subquery, auth=auth, timeout=timeout)
-        subquery_response.raise_for_status()
-        subquery_json = subquery_response.json()["feed"]
-        subquery_products = _parse_gnsssearch_response(subquery_json)
-        collection += list(subquery_products.values())
-        if "next" in [link["rel"] for link in subquery_json["link"]]:
-            subquery = [
-                link["href"] for link in subquery_json["link"] if link["rel"] == "next"
-            ][0]
-        else:
-            subquery = None
-    # if osvtype == "RES" and maxdate("POE", "stop") is not None:
-    #     collection = [
-    #         x
-    #         for x in collection
-    #         if self.date(x["filename"], "start") > self.maxdate("POE", "stop")
-    #     ]
-    return collection
+    subquery_response = requests.get(subquery, auth=AUTH, timeout=timeout)
+    subquery_response.raise_for_status()
+    subquery_json = subquery_response.json()["feed"]
+    file_links = _parse_gnsssearch_json(subquery_json.get("entry", []))
+
+    return file_links, orbit_type
+
+
+def _parse_gnsssearch_json(search_dict):
+    file_links = []
+    # Will return ['entry'] as dict if only one item
+    # If so just make a list
+    if isinstance(search_dict, dict):
+        search_dict = [search_dict]
+    for entry in search_dict:
+        filename, link = None, None
+        # We only need 2 things from their response:
+        # filename ('___.EOF'), and the download link
+        for key, value in entry.items():
+            if key == "str":
+                for elem in value:
+                    key, val = elem["name"], elem["content"]
+                    if key == "filename":
+                        filename = val
+            elif key == "link":
+                for elem in value:
+                    # Seems to be "rel = icon" and "rel = alternative" which aren't the main data
+                    if "rel" not in elem.keys():
+                        link = elem["href"]
+
+        if filename is None or link is None:
+            logger.warning("Failed to find link/url in parse_gnsssearch_json")
+        file_links.append((filename, link))
+    return file_links
