@@ -310,3 +310,156 @@ def main(search_path=".", save_dir=",", sentinel_file=None, mission=None, date=N
         sentinel_file=sentinel_file,
         save_dir=save_dir,
     )
+
+
+def catch(sensor="S1A", osvtype=PRECISE_ORBIT, start=None, stop=None, timeout=20):
+    """
+    check a server for files
+    Parameters
+    ----------
+    sensor: str or list
+        The S1 mission(s):
+            - 'S1A'
+            - 'S1B'
+            - ['S1A', 'S1B']
+    osvtype: {'POEORB', 'RESORB'}
+        Type of orbit (precise or restituted) to search for
+    start: str
+        the date to start searching for files in format YYYYmmddTHHMMSS
+    stop: str
+        the date to stop searching for files in format YYYYmmddTHHMMSS
+    Returns
+    -------
+    list
+        the product dictionary of the remote OSV files, with href
+    """
+    url = "https://scihub.copernicus.eu/gnss/search/"
+    auth = ("gnssguest", "gnssguest")
+    # a dictionary for storing the url arguments
+    query = {}
+
+    if osvtype == PRECISE_ORBIT:
+        query["producttype"] = "AUX_POEORB"
+    elif osvtype == RESTITUTED_ORBIT:
+        query["producttype"] = "AUX_RESORB"
+    else:
+        raise ValueError("osvtype must be either 'POE' or 'RES'")
+
+    if sensor in ["S1A", "S1B"]:
+        query["platformname"] = "Sentinel-1"
+        # filename starts w/ sensor
+        query["filename"] = "{}*".format(sensor)
+    elif sorted(sensor) == ["S1A", "S1B"]:
+        query["platformname"] = "Sentinel-1"
+    else:
+        raise RuntimeError("unsupported input for parameter sensor")
+
+    # the collection of files to be returned
+    collection = []
+    # set the defined date or the date of the first existing OSV file otherwise
+    # two days are added/subtracted from the defined start and stop dates since the
+    # online query does only allow for searching the start time; hence, if e.g.
+    # the start date is 2018-01-01T000000, the query would not return the corresponding
+    # file, whose start date is 2017-12-31 (V20171231T225942_20180102T005942)
+    if start is not None:
+        date_start = parse(start).strftime("%Y-%m-%dT%H:%M:%SZ")
+    else:
+        date_start = datetime.strptime("2014-07-31", "%Y-%m-%d").strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
+    # set the defined date or the current date otherwise
+    if stop is not None:
+        date_stop = parse(stop).strftime("%Y-%m-%dT%H:%M:%SZ")
+    else:
+        date_stop = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    # append the time frame to the query dictionary
+    query["beginPosition"] = "[{} TO {}]".format(date_start, date_stop)
+    query["endPosition"] = "[{} TO {}]".format(date_start, date_stop)
+    import ipdb
+
+    ipdb.set_trace()
+    print("searching for new {} files".format(osvtype))
+    query_list = []
+    for keyword, value in query.items():
+        query_elem = "{}:{}".format(keyword, value)
+        query_list.append(query_elem)
+    query_str = " ".join(query_list)
+    target = "{}?q={}&format=json".format(url, query_str)
+    print(target)
+
+    def _parse_gnsssearch_json(search_dict):
+        parsed_dict = {}
+        # Will return ['entry'] as dict if only one item
+        # If so just make a list
+        if isinstance(search_dict, dict):
+            search_dict = [search_dict]
+        for entry in search_dict:
+            id = entry["id"]
+            entry_dict = {}
+
+            for key, value in entry.items():
+                if key == "title":
+                    entry_dict[key] = value
+                elif key == "id":
+                    entry_dict[key] = value
+                elif key == "ondemand":
+                    if value.lower() == "true":
+                        entry_dict[key] = True
+                    else:
+                        entry_dict[key] = False
+                elif key == "str":
+                    for elem in value:
+                        entry_dict[elem["name"]] = elem["content"]
+                elif key == "link":
+                    for elem in value:
+                        if "rel" in elem.keys():
+                            href_key = "href_" + elem["rel"]
+                            entry_dict[href_key] = elem["href"]
+                        else:
+                            entry_dict["href"] = elem["href"]
+                elif key == "date":
+                    for elem in value:
+                        entry_dict[elem["name"]] = parse(elem["content"])
+
+            parsed_dict[id] = entry_dict
+        return parsed_dict
+
+    def _parse_gnsssearch_response(response_json):
+        if "entry" in response_json.keys():
+            search_dict = response_json["entry"]
+            parsed_dict = _parse_gnsssearch_json(search_dict)
+        else:
+            parsed_dict = {}
+        return parsed_dict
+
+    response = requests.get(target, auth=auth, timeout=timeout)
+    response.raise_for_status()
+    response_json = response.json()["feed"]
+    total_results = response_json["opensearch:totalResults"]
+    print("found {} OSV results".format(total_results))
+    subquery = [
+        link["href"] for link in response_json["link"] if link["rel"] == "self"
+    ][0]
+    if int(total_results) > 10:
+        subquery = subquery.replace("rows=10", "rows=100")
+
+    while subquery:
+        subquery_response = requests.get(subquery, auth=auth, timeout=timeout)
+        subquery_response.raise_for_status()
+        subquery_json = subquery_response.json()["feed"]
+        subquery_products = _parse_gnsssearch_response(subquery_json)
+        collection += list(subquery_products.values())
+        if "next" in [link["rel"] for link in subquery_json["link"]]:
+            subquery = [
+                link["href"] for link in subquery_json["link"] if link["rel"] == "next"
+            ][0]
+        else:
+            subquery = None
+    # if osvtype == "RES" and maxdate("POE", "stop") is not None:
+    #     collection = [
+    #         x
+    #         for x in collection
+    #         if self.date(x["filename"], "start") > self.maxdate("POE", "stop")
+    #     ]
+    return collection
