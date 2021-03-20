@@ -43,7 +43,7 @@ DT_FMT = "%Y/%m/%d"
 # S1A_OPER_AUX_POEORB_OPOD_20210318T121438_V20210225T225942_20210227T005942.EOF
 
 API_URL = "https://scihub.copernicus.eu/gnss/search/"
-# authentication and timeout for the requests call
+# authentication and  for the requests call
 AUTH = ("gnssguest", "gnssguest")
 TIMEOUT = 20
 
@@ -373,16 +373,23 @@ def eof_list_newapi(search_dt, mission=None, orbit_type=PRECISE_ORBIT):
     logger.info("Searching for new {} files at url".format(orbit_type))
     logger.info("'" + target + "'")
 
-    response = requests.get(target, auth=AUTH, timeout=timeout)
+    response = requests.get(target, auth=AUTH, timeout=TIMEOUT)
     response.raise_for_status()
     response_json = response.json()["feed"]
-    total_results = response_json["opensearch:totalResults"]
-    logger.info("Found {} OSV results".format(total_results))
+    total_results = int(response_json["opensearch:totalResults"])
+    msg = "Found {} {} results".format(total_results, orbit_type)
+    if total_results == 0 and orbit_type == PRECISE_ORBIT:
+        logger.warning(msg)
+        logger.warning("Attempting restituted orbits")
+        return eof_list_newapi(search_dt, mission=mission, orbit_type=RESTITUTED_ORBIT)
+    else:
+        logger.info(msg)
+
     subquery = [
         link["href"] for link in response_json["link"] if link["rel"] == "self"
     ][0]
 
-    subquery_response = requests.get(subquery, auth=AUTH, timeout=timeout)
+    subquery_response = requests.get(subquery, auth=AUTH, timeout=TIMEOUT)
     subquery_response.raise_for_status()
     subquery_json = subquery_response.json()["feed"]
     file_links = _parse_gnsssearch_json(subquery_json.get("entry", []))
@@ -427,6 +434,19 @@ def _dedupe_links_newapi(filenames, links):
     return out
 
 
+def _pick_precise_file_newapi(filenames, links, sent_date):
+    """Choose the precise file with (sent_date - 1, sent_date + 1)"""
+    out = []
+    for filename, link in zip(filenames, links):
+        so = SentinelOrbit(filename)
+        # hotfix until I figure out what the RAW processor is doing with the orbtimings
+        if (so.start_time.date() == (sent_date - timedelta(days=1)).date()) and (
+            so.stop_time.date() == (sent_date + timedelta(days=1)).date()
+        ):
+            out.append((filename, link))
+    return out
+
+
 def _download_and_write_newapi(mission, dt, save_dir="."):
     """Wrapper function to run the link downloading in parallel
 
@@ -448,7 +468,8 @@ def _download_and_write_newapi(mission, dt, save_dir="."):
     filenames, links = list(zip(*cur_links))
     cur_links = _dedupe_links_newapi(filenames, links)
     if orbit_type == PRECISE_ORBIT:
-        cur_links = _pick_precise_file(cur_links, dt)
+        filenames, links = list(zip(*cur_links))
+        cur_links = _pick_precise_file_newapi(filenames, links, dt)
 
     # RESORB has multiple overlapping
     saved_files = []
@@ -461,7 +482,7 @@ def _download_and_write_newapi(mission, dt, save_dir="."):
             return [fname]
 
         logger.info("Downloading %s", link)
-        response = requests.get(link, auth=AUTH)
+        response = requests.get(link, auth=AUTH, timeout=TIMEOUT)
         response.raise_for_status()
         logger.info("Saving to %s", fname)
         with open(fname, "wb") as f:
