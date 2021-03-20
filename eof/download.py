@@ -416,3 +416,55 @@ def _parse_gnsssearch_json(search_dict):
             logger.warning("Failed to find link/url in parse_gnsssearch_json")
         file_links.append((filename, link))
     return file_links
+
+
+def _dedupe_links_newapi(filenames, links):
+    out = [(filenames[0], links[0])]
+    orb1 = SentinelOrbit(filenames[0])
+    for filename, link in zip(filenames[1:], links[1:]):
+        if SentinelOrbit(filename).date != orb1.date:
+            out.append((filename, link))
+    return out
+
+
+def _download_and_write_newapi(mission, dt, save_dir="."):
+    """Wrapper function to run the link downloading in parallel
+
+    Args:
+        mission (str): Sentinel mission: either S1A or S1B
+        dt (datetime): datetime of Sentinel product
+        save_dir (str): directory to save the EOF files into
+
+    Returns:
+        list[str]: Filenames to which the orbit files have been saved
+    """
+    try:
+        cur_links, orbit_type = eof_list_newapi(dt, mission)
+    except ValueError as e:  # 0 found for date
+        logger.warning(e.args[0])
+        logger.warning("Skipping {}".format(dt.strftime("%Y-%m-%d")))
+        return
+
+    filenames, links = list(zip(*cur_links))
+    cur_links = _dedupe_links_newapi(filenames, links)
+    if orbit_type == PRECISE_ORBIT:
+        cur_links = _pick_precise_file(cur_links, dt)
+
+    # RESORB has multiple overlapping
+    saved_files = []
+    for filename, link in cur_links:
+        fname = os.path.join(save_dir, filename)
+        if os.path.isfile(fname):
+            logger.info("%s already exists, skipping download.", link)
+            # TODO: If I return here.. do I ever want to iterate
+            # and save multiple links?
+            return [fname]
+
+        logger.info("Downloading %s", link)
+        response = requests.get(link, auth=AUTH)
+        response.raise_for_status()
+        logger.info("Saving to %s", fname)
+        with open(fname, "wb") as f:
+            f.write(response.content)
+        saved_files.append(fname)
+    return saved_files
