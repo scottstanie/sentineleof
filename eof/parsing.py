@@ -9,16 +9,15 @@ class EOFLinkFinder(HTMLParser):
     """Finds EOF download links in aux.sentinel1.eo.esa.int page
 
     Example page to search:
-    http://aux.sentinel1.eo.esa.int/POEORB/2020/10/07/
+    http://step.esa.int/auxdata/orbits/Sentinel-1/POEORB/S1B/2020/10/
 
     Usage:
     >>> import requests
-    >>> resp = requests.get("http://aux.sentinel1.eo.esa.int/POEORB/2021/03/18/")
+    >>> resp = requests.get("http://step.esa.int/auxdata/orbits/Sentinel-1/POEORB/S1B/2020/10/")
     >>> parser = EOFLinkFinder()
     >>> parser.feed(resp.text)
-    >>> print(sorted(parser.eof_links))
-    ['S1A_OPER_AUX_POEORB_OPOD_20210318T121438_V20210225T225942_20210227T005942.EOF', \
-'S1B_OPER_AUX_POEORB_OPOD_20210318T111602_V20210225T225942_20210227T005942.EOF']
+    >>> print(sorted(parser.eof_links)[0])
+    S1B_OPER_AUX_POEORB_OPOD_20201022T111233_V20201001T225942_20201003T005942.EOF.zip
     """
 
     def __init__(self):
