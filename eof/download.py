@@ -105,7 +105,7 @@ def eof_list(start_dt, mission, orbit_type=PRECISE_ORBIT):
 
     Usage:
     >>> from datetime import datetime
-    >>> eof_list(datetime(2021, 2, 18), "S1A")
+    >>> eof_list(datetime(2021, 3, 4), "S1A")
     (['http://step.esa.int/auxdata/orbits/Sentinel-1/POEORB/S1A/2021/03/\
 S1A_OPER_AUX_POEORB_OPOD_20210325T121917_V20210304T225942_20210306T005942.EOF.zip'], 'POEORB')
     """
