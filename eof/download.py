@@ -19,12 +19,11 @@ Example EOF: 'S1A_OPER_AUX_POEORB_OPOD_20140828T122040_V20140806T225944_20140808
 Full EOF sentinel doumentation:
 https://earth.esa.int/documents/247904/349490/GMES_Sentinels_POD_Service_File_Format_Specification_GMES-GSEG-EOPG-FS-10-0075_Issue1-3.pdf
 
-API documentation: https://qc.sentinel1.eo.esa.int/doc/api/
-
 See parsers for Sentinel file naming description
 """
 import os
 import glob
+from zipfile import ZipFile
 import itertools
 import requests
 from multiprocessing.pool import ThreadPool
@@ -36,8 +35,8 @@ from .log import logger
 
 MAX_WORKERS = 20  # For parallel downloading
 
-BASE_URL = "http://aux.sentinel1.eo.esa.int/{orbit_type}/{dt}/"
-DT_FMT = "%Y/%m/%d"
+BASE_URL = "http://step.esa.int/auxdata/orbits/Sentinel-1/{orbit_type}/{mission}/{dt}/"
+DT_FMT = "%Y/%m"
 # e.g. "http://aux.sentinel1.eo.esa.int/POEORB/2021/03/18/"
 # This page has links with relative urls in the <a> tags, such as:
 # S1A_OPER_AUX_POEORB_OPOD_20210318T121438_V20210225T225942_20210227T005942.EOF
@@ -106,23 +105,24 @@ def eof_list(start_dt, mission, orbit_type=PRECISE_ORBIT):
 
     Usage:
     >>> from datetime import datetime
-    >>> eof_list(datetime(2021, 2, 18), "S1A")
-    (['http://aux.sentinel1.eo.esa.int/POEORB/2021/03/10/\
-S1A_OPER_AUX_POEORB_OPOD_20210310T121945_V20210217T225942_20210219T005942.EOF'], 'POEORB')
+    >>> eof_list(datetime(2021, 3, 4), "S1A")
+    (['http://step.esa.int/auxdata/orbits/Sentinel-1/POEORB/S1A/2021/03/\
+S1A_OPER_AUX_POEORB_OPOD_20210325T121917_V20210304T225942_20210306T005942.EOF.zip'], 'POEORB')
     """
-    # Unfortunately, the archive page stores the file based on "creation date", but we
-    # care about the "validity date"
-    # TODO: take this out once the new ESA API is up.
-    if orbit_type == PRECISE_ORBIT:
-        # ESA seems to reliably upload the POEORB files at noon UTC, 3 weeks after the flyover
-        validity_creation_diff = timedelta(days=20, hours=12)
+    # The step.esa.int/auxdata page stotes all files for one month, but they start, e.g.:
+    # ...V20190501T225942_...
+    # with validity time at 22:59 on the 1st of the month
+    # If the desired data is on day 1 of a month, but starts before 22:59,
+    # need to search the previous month's page
+    if start_dt.day == 1 and start_dt.hour < 23:
+        search_dt = start_dt - timedelta(days=1)
     else:
-        validity_creation_diff = timedelta(hours=4)
-    # truncate the start datetime to midnight to make sure the sure straddles the date
-    search_dt = (
-        datetime(start_dt.year, start_dt.month, start_dt.day) + validity_creation_diff
+        search_dt = start_dt
+
+    # TODO: take this out once the new ESA API is up.
+    url = BASE_URL.format(
+        orbit_type=orbit_type, mission=mission, dt=search_dt.strftime(DT_FMT)
     )
-    url = BASE_URL.format(orbit_type=orbit_type, dt=search_dt.strftime(DT_FMT))
 
     logger.info("Searching for EOFs at {}".format(url))
     response = requests.get(url)
@@ -142,7 +142,9 @@ S1A_OPER_AUX_POEORB_OPOD_20210310T121945_V20210217T225942_20210219T005942.EOF'],
     parser = EOFLinkFinder()
     parser.feed(response.text)
     # Append the test url, since the links on the page are relative (don't contain full url)
-    links = [url + link for link in parser.eof_links if link.startswith(mission)]
+    # Now the URL separates S1A and S1B, so no need for this
+    # links = [url + link for link in parser.eof_links if link.startswith(mission)]
+    links = [url + link for link in parser.eof_links]
 
     if len(links) < 1:
         if orbit_type == PRECISE_ORBIT:
@@ -221,8 +223,19 @@ def _download_and_write(mission, dt, save_dir="."):
         logger.info("Saving to %s", fname)
         with open(fname, "wb") as f:
             f.write(response.content)
+        if fname.endswith(".zip"):
+            _extract_zip(fname)
+            # Pass the unzipped file ending in ".EOF", not the ".zip"
+            fname = fname.replace(".zip", "")
         saved_files.append(fname)
     return saved_files
+
+
+def _extract_zip(fname_zipped):
+    # dirname = os.path.dirname(fname_zipped)
+    with ZipFile(fname_zipped, "r") as zip_ref:
+        # Extract the .EOF to the same direction as the .zip
+        zip_ref.extractall()
 
 
 def find_current_eofs(cur_path):
