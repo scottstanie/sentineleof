@@ -25,6 +25,7 @@ See parsers for Sentinel file naming description
 """
 import os
 import glob
+from zipfile import ZipFile
 import itertools
 import requests
 from multiprocessing.pool import ThreadPool
@@ -36,8 +37,8 @@ from .log import logger
 
 MAX_WORKERS = 20  # For parallel downloading
 
-BASE_URL = "http://aux.sentinel1.eo.esa.int/{orbit_type}/{dt}/"
-DT_FMT = "%Y/%m/%d"
+BASE_URL = "http://step.esa.int/auxdata/orbits/Sentinel-1/{orbit_type}/{mission}/{dt}/"
+DT_FMT = "%Y/%m"
 # e.g. "http://aux.sentinel1.eo.esa.int/POEORB/2021/03/18/"
 # This page has links with relative urls in the <a> tags, such as:
 # S1A_OPER_AUX_POEORB_OPOD_20210318T121438_V20210225T225942_20210227T005942.EOF
@@ -122,7 +123,9 @@ S1A_OPER_AUX_POEORB_OPOD_20210310T121945_V20210217T225942_20210219T005942.EOF'],
     search_dt = (
         datetime(start_dt.year, start_dt.month, start_dt.day) + validity_creation_diff
     )
-    url = BASE_URL.format(orbit_type=orbit_type, dt=search_dt.strftime(DT_FMT))
+    url = BASE_URL.format(
+        orbit_type=orbit_type, mission=mission, dt=search_dt.strftime(DT_FMT)
+    )
 
     logger.info("Searching for EOFs at {}".format(url))
     response = requests.get(url)
@@ -142,7 +145,9 @@ S1A_OPER_AUX_POEORB_OPOD_20210310T121945_V20210217T225942_20210219T005942.EOF'],
     parser = EOFLinkFinder()
     parser.feed(response.text)
     # Append the test url, since the links on the page are relative (don't contain full url)
-    links = [url + link for link in parser.eof_links if link.startswith(mission)]
+    # Now the URL separates S1A and S1B, so no need for this
+    # links = [url + link for link in parser.eof_links if link.startswith(mission)]
+    links = [url + link for link in parser.eof_links]
 
     if len(links) < 1:
         if orbit_type == PRECISE_ORBIT:
@@ -221,8 +226,19 @@ def _download_and_write(mission, dt, save_dir="."):
         logger.info("Saving to %s", fname)
         with open(fname, "wb") as f:
             f.write(response.content)
+        if fname.endswith(".zip"):
+            _extract_zip(fname)
+            # Pass the unzipped file ending in ".EOF", not the ".zip"
+            fname = fname.replace(".zip", "")
         saved_files.append(fname)
     return saved_files
+
+
+def _extract_zip(fname_zipped):
+    # dirname = os.path.dirname(fname_zipped)
+    with ZipFile(fname_zipped, "r") as zip_ref:
+        # Extract the .EOF to the same direction as the .zip
+        zip_ref.extractall()
 
 
 def find_current_eofs(cur_path):

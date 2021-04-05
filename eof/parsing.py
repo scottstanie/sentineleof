@@ -28,7 +28,9 @@ class EOFLinkFinder(HTMLParser):
     def handle_starttag(self, tag, attrs):
         if tag == "a":
             for name, value in attrs:
-                if name == "href" and value.endswith(".EOF"):
+                if name == "href" and (
+                    value.endswith(".EOF.zip") or value.endswith(".EOF")
+                ):
                     self.eof_links.add(value)
 
 
