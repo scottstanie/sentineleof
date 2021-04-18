@@ -231,11 +231,13 @@ def _download_and_write(mission, dt, save_dir="."):
     return saved_files
 
 
-def _extract_zip(fname_zipped):
+def _extract_zip(fname_zipped, delete=True):
     # dirname = os.path.dirname(fname_zipped)
     with ZipFile(fname_zipped, "r") as zip_ref:
         # Extract the .EOF to the same direction as the .zip
         zip_ref.extractall()
+    if delete:
+        os.remove(fname_zipped)
 
 
 def find_current_eofs(cur_path):
@@ -269,10 +271,8 @@ def find_scenes_to_download(search_path="./", save_dir="./"):
 
     # Now loop through each Sentinel scene in search_path
     for parsed_file in find_unique_safes(search_path):
-
-        if (
-            parsed_file.start_time in orbit_dts
-        ):  # start_time is a datetime, already found
+        if parsed_file.start_time in orbit_dts:
+            # start_time is a datetime, already found
             continue
         if any(parsed_file.start_time in orbit for orbit in current_eofs):
             logger.info(
