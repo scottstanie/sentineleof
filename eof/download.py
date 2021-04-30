@@ -76,18 +76,50 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
     # First make sures all are datetimes if given string
     orbit_dts = [parse(dt) if isinstance(dt, str) else dt for dt in orbit_dts]
 
-    # Download and save all links in parallel
-    pool = ThreadPool(processes=MAX_WORKERS)
-    result_dt_dict = {
-        pool.apply_async(_download_and_write, (mission, dt, save_dir)): dt
-        for mission, dt in zip(missions, orbit_dts)
-    }
     filenames = []
-    for result in result_dt_dict:
-        cur_filenames = result.get()
-        dt = result_dt_dict[result]
-        logger.info("Finished {}, saved to {}".format(dt.date(), cur_filenames))
-        filenames.extend(cur_filenames)
+    query_scihub = False
+
+    if not query_scihub:
+        # Download and save all links in parallel
+        pool = ThreadPool(processes=MAX_WORKERS)
+        result_dt_dict = {
+            pool.apply_async(_download_and_write, (mission, dt, save_dir)): dt
+            for mission, dt in zip(missions, orbit_dts)
+        }
+
+        for result in result_dt_dict:
+            cur_filenames = result.get()
+            if cur_filenames is None:
+                query_scihub = True
+                continue
+            dt = result_dt_dict[result]
+            logger.info("Finished {}, saved to {}".format(dt.date(), cur_filenames))
+            filenames.extend(cur_filenames)
+    
+    if query_scihub:
+        # try to search on scihub
+        from .scihubclient import ScihubGnssClient
+        client = ScihubGnssClient()
+        query = {}
+        if sentinel_file:
+            query.update(client.query_orbit_for_product(sentinel_file))
+        else:
+            for mission, dt in zip(missions, orbit_dts):
+                result = client.query_orbit(dt, dt + timedelta(day=1),
+                                            mission, product_type='AUX_POEORB')
+                if result:
+                    query.update(result)
+                else:
+                    # try with RESORB
+                    result = client.query_orbit(dt, dt + timedelta(minutes=1),
+                                                mission,
+                                                product_type='AUX_RESORB')
+                    query.update(result)
+
+        if query:
+            downloaded, _, _ = client.download_all(query)
+            filenames.extend(item['path'] for item in downloaded)
+    
     return filenames
 
 

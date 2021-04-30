@@ -29,6 +29,7 @@ setuptools.setup(
         "requests",
         "click",
         "python-dateutil",
+        "sentinelsat",
     ],
     entry_points={
         "console_scripts": [
