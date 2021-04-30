@@ -233,9 +233,15 @@ def _download_and_write(mission, dt, save_dir="."):
 
 def _extract_zip(fname_zipped, delete=True):
     # dirname = os.path.dirname(fname_zipped)
+    outdir = os.path.dirname(fname_zipped)
     with ZipFile(fname_zipped, "r") as zip_ref:
         # Extract the .EOF to the same direction as the .zip
-        zip_ref.extractall()
+        for name in zip_ref.namelist():
+            data = zip_ref.read(name)
+            newname = os.path.join(outdir, os.path.basename(name))
+            with open(newname, 'wb') as fd:
+                fd.write(data)
+
     if delete:
         os.remove(fname_zipped)
 
