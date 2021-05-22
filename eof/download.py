@@ -26,14 +26,17 @@ import glob
 from zipfile import ZipFile
 import itertools
 import requests
+from urllib3.util.retry import Retry
+from requests.adapters import HTTPAdapter
+
 from multiprocessing.pool import ThreadPool
-from datetime import timedelta, datetime
+from datetime import timedelta
 from dateutil.parser import parse
 from .parsing import EOFLinkFinder
 from .products import Sentinel, SentinelOrbit
 from .log import logger
 
-MAX_WORKERS = 20  # For parallel downloading
+MAX_WORKERS = 2  # For parallel downloading
 
 BASE_URL = "http://step.esa.int/auxdata/orbits/Sentinel-1/{orbit_type}/{mission}/{dt}/"
 DT_FMT = "%Y/%m"
@@ -218,8 +221,13 @@ def _download_and_write(mission, dt, save_dir="."):
             return [fname]
 
         logger.info("Downloading %s", link)
-        response = requests.get(link)
-        response.raise_for_status()
+        with requests.Session() as s:
+            retries = Retry(
+                total=5, backoff_factor=1, status_forcelist=[500, 502, 503, 504]
+            )
+            s.mount("http://", HTTPAdapter(max_retries=retries))
+            response = s.get(link)
+            response.raise_for_status()
         logger.info("Saving to %s", fname)
         with open(fname, "wb") as f:
             f.write(response.content)
@@ -239,7 +247,7 @@ def _extract_zip(fname_zipped, delete=True):
         for name in zip_ref.namelist():
             data = zip_ref.read(name)
             newname = os.path.join(outdir, os.path.basename(name))
-            with open(newname, 'wb') as fd:
+            with open(newname, "wb") as fd:
                 fd.write(data)
 
     if delete:
