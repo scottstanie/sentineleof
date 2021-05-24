@@ -81,6 +81,7 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
     orbit_dts = [parse(dt) if isinstance(dt, str) else dt for dt in orbit_dts]
 
     filenames = []
+    remaining_dates = []
 
     if use_scihub:
         # try to search on scihub
@@ -91,24 +92,33 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
             query.update(client.query_orbit_for_product(sentinel_file))
         else:
             for mission, dt in zip(missions, orbit_dts):
+                found_result = False
                 result = client.query_orbit(dt, dt + timedelta(days=1),
                                             mission, product_type='AUX_POEORB')
                 if result:
+                    found_result = True
                     query.update(result)
                 else:
                     # try with RESORB
+                    found_result = True
                     result = client.query_orbit(dt, dt + timedelta(minutes=1),
                                                 mission,
                                                 product_type='AUX_RESORB')
                     query.update(result)
+                if not found_result:
+                    remaining_dates.append((mission, dt))
 
         if query:
             result = client.download_all(query)
             filenames.extend(
                 item['path'] for item in result.downloaded.values()
             )
+    else:
+        # If forcing avoidance of scihub, all downloads remain
+        remaining_dates = zip(missions, orbit_dts)
 
-    if not use_scihub:
+    # For failures from scihub, try step.esa.int
+    if remaining_dates:
         # Download and save all links in parallel
         pool = ThreadPool(processes=MAX_WORKERS_STEP)
         result_dt_dict = {
@@ -116,14 +126,13 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
             for mission, dt in zip(missions, orbit_dts)
         }
 
-        for result in result_dt_dict:
+        for result, dt in result_dt_dict.items():
             cur_filenames = result.get()
             if cur_filenames is None:
-                use_scihub = True
-                continue
-            dt = result_dt_dict[result]
-            logger.info("Finished {}, saved to {}".format(dt.date(), cur_filenames))
-            filenames.extend(cur_filenames)
+                logger.error("Failed to download orbit for %s", dt.date())
+            else:
+                logger.info("Finished %s, saved to %s", dt.date(), cur_filenames)
+                filenames.extend(cur_filenames)
     
     return filenames
 
