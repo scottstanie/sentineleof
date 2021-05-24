@@ -107,7 +107,7 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
             query.update(client.query_orbit_for_product(sentinel_file))
         else:
             for mission, dt in zip(missions, orbit_dts):
-                result = client.query_orbit(dt, dt + timedelta(day=1),
+                result = client.query_orbit(dt, dt + timedelta(days=1),
                                             mission, product_type='AUX_POEORB')
                 if result:
                     query.update(result)
@@ -120,7 +120,9 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
 
         if query:
             result = client.download_all(query)
-            filenames.extend(item['path'] for item in result.downloaded)
+            filenames.extend(
+                item['path'] for item in result.downloaded.values()
+            )
     
     return filenames
 
