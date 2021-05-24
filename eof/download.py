@@ -27,13 +27,14 @@ from zipfile import ZipFile
 import itertools
 import requests
 from multiprocessing.pool import ThreadPool
-from datetime import timedelta, datetime
+from datetime import timedelta
 from dateutil.parser import parse
 from .parsing import EOFLinkFinder
 from .products import Sentinel, SentinelOrbit
 from .log import logger
 
 MAX_WORKERS = 20  # For parallel downloading
+MAX_WORKERS_STEP = 6  # step.esa.int servers have stricter requirements
 
 BASE_URL = "http://step.esa.int/auxdata/orbits/Sentinel-1/{orbit_type}/{mission}/{dt}/"
 DT_FMT = "%Y/%m"
@@ -81,23 +82,6 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
 
     filenames = []
 
-    if not use_scihub:
-        # Download and save all links in parallel
-        pool = ThreadPool(processes=MAX_WORKERS)
-        result_dt_dict = {
-            pool.apply_async(_download_and_write, (mission, dt, save_dir)): dt
-            for mission, dt in zip(missions, orbit_dts)
-        }
-
-        for result in result_dt_dict:
-            cur_filenames = result.get()
-            if cur_filenames is None:
-                use_scihub = True
-                continue
-            dt = result_dt_dict[result]
-            logger.info("Finished {}, saved to {}".format(dt.date(), cur_filenames))
-            filenames.extend(cur_filenames)
-    
     if use_scihub:
         # try to search on scihub
         from .scihubclient import ScihubGnssClient
@@ -123,6 +107,23 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
             filenames.extend(
                 item['path'] for item in result.downloaded.values()
             )
+
+    if not use_scihub:
+        # Download and save all links in parallel
+        pool = ThreadPool(processes=MAX_WORKERS_STEP)
+        result_dt_dict = {
+            pool.apply_async(_download_and_write, (mission, dt, save_dir)): dt
+            for mission, dt in zip(missions, orbit_dts)
+        }
+
+        for result in result_dt_dict:
+            cur_filenames = result.get()
+            if cur_filenames is None:
+                use_scihub = True
+                continue
+            dt = result_dt_dict[result]
+            logger.info("Finished {}, saved to {}".format(dt.date(), cur_filenames))
+            filenames.extend(cur_filenames)
     
     return filenames
 
@@ -249,8 +250,6 @@ def _download_and_write(mission, dt, save_dir="."):
         fname = os.path.join(save_dir, link.split("/")[-1])
         if os.path.isfile(fname):
             logger.info("%s already exists, skipping download.", link)
-            # TODO: If I return here.. do I ever want to iterate
-            # and save multiple links?
             return [fname]
 
         logger.info("Downloading %s", link)
