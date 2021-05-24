@@ -8,8 +8,9 @@ import operator
 import collections
 from typing import NamedTuple, Sequence
 
-from ._gnss import GnssAPI
 from .products import Sentinel as S1Product
+
+from sentinelsat import SentinelAPI
 
 
 _log = logging.getLogger(__name__)
@@ -80,8 +81,11 @@ class ScihubGnssClient:
     T0 = datetime.timedelta(days=1)
     T1 = datetime.timedelta(days=1)
 
-    def __init__(self, **kwargs):
-        self._api = GnssAPI(**kwargs)
+    def __init__(self, user: str = "gnssguest", password: str = "gnssguest",
+                 api_url: str = "https://scihub.copernicus.eu/gnss/",
+                 **kwargs):
+        self._api = SentinelAPI(user=user, password=password, api_url=api_url,
+                                **kwargs)
 
     def query_orbit(self, t0, t1, satellite_id: str,
                     product_type: str = 'AUX_POEORB'):
@@ -125,7 +129,7 @@ class ScihubGnssClient:
     def download(self, uuid, **kwargs):
         """Download a single orbit product.
 
-        See sentinelsat.SentinelAPI.download for a detailed desctiption
+        See sentinelsat.SentinelAPI.download for a detailed description
         of arguments.
         """
         return self._api.download(uuid, **kwargs)
@@ -133,30 +137,7 @@ class ScihubGnssClient:
     def download_all(self, products, **kwargs):
         """Download all the specified orbit products.
 
-        See sentinelsat.SentinelAPI.download_all for a detailed desctiption
+        See sentinelsat.SentinelAPI.download_all for a detailed description
         of arguments.
         """
         return self._api.download_all(products, **kwargs)
-
-
-if __name__ == '__main__':
-    import argparse
-
-    logging.basicConfig(format='%(levelname)s: %(message)s')
-    logging.getLogger(__name__).setLevel(logging.DEBUG)
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('products', metavar='PRODUCT', nargs='+')
-
-    args = parser.parse_args()
-
-    client = ScihubGnssClient()
-    client._api.logger.setLevel(logging.DEBUG)
-
-    query = {}
-    for product in args.products:
-        query.update(client.query_orbit_for_product(product))
-
-    assert len(query) == len(args.products)
-
-    client.download_all(query)
