@@ -109,7 +109,7 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
                     remaining_dates.append((mission, dt))
 
         if query:
-            result = client.download_all(query)
+            result = client.download_all(query, directory_path=save_dir)
             filenames.extend(
                 item['path'] for item in result.downloaded.values()
             )
