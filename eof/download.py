@@ -36,11 +36,11 @@ from .log import logger
 MAX_WORKERS = 20  # For parallel downloading
 MAX_WORKERS_STEP = 6  # step.esa.int servers have stricter requirements
 
-BASE_URL = "http://step.esa.int/auxdata/orbits/Sentinel-1/{orbit_type}/{mission}/{dt}/"
-DT_FMT = "%Y/%m"
-# e.g. "http://aux.sentinel1.eo.esa.int/POEORB/2021/03/18/"
+# mirror server maintained by STEP team
 # This page has links with relative urls in the <a> tags, such as:
-# S1A_OPER_AUX_POEORB_OPOD_20210318T121438_V20210225T225942_20210227T005942.EOF
+# S1A_OPER_AUX_POEORB_OPOD_20210318T121438_V20210225T225942_20210227T005942.EOF.zip
+STEP_URL = "http://step.esa.int/auxdata/orbits/Sentinel-1/{orbit_type}/{mission}/{dt}/"
+DT_FMT = "%Y/%m"
 
 PRECISE_ORBIT = "POEORB"
 RESTITUTED_ORBIT = "RESORB"
@@ -165,8 +165,7 @@ S1A_OPER_AUX_POEORB_OPOD_20210325T121917_V20210304T225942_20210306T005942.EOF.zi
     else:
         search_dt = start_dt
 
-    # TODO: take this out once the new ESA API is up.
-    url = BASE_URL.format(
+    url = STEP_URL.format(
         orbit_type=orbit_type, mission=mission, dt=search_dt.strftime(DT_FMT)
     )
 
