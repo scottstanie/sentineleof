@@ -92,13 +92,13 @@ class ScihubGnssClient:
         assert satellite_id in {'S1A', 'S1B'}
         assert product_type in {'AUX_POEORB', 'AUX_RESORB'}
 
-        query_padams = dict(
+        query_params = dict(
             producttype=product_type,
             platformserialidentifier=satellite_id[1:],
             date=[t0, t1],
         )
-        _log.debug('query parameter: %s', query_padams)
-        products = self._api.query(**query_padams)
+        _log.debug('query parameter: %s', query_params)
+        products = self._api.query(**query_params)
         return products
 
     @staticmethod
