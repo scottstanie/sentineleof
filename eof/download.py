@@ -33,7 +33,6 @@ from .parsing import EOFLinkFinder
 from .products import Sentinel, SentinelOrbit
 from .log import logger
 
-MAX_WORKERS = 20  # For parallel downloading
 MAX_WORKERS_STEP = 6  # step.esa.int servers have stricter requirements
 
 # mirror server maintained by STEP team
