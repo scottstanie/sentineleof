@@ -267,18 +267,18 @@ def _download_and_write(mission, dt, save_dir="."):
         with open(fname, "wb") as f:
             f.write(response.content)
         if fname.endswith(".zip"):
-            _extract_zip(fname)
+            _extract_zip(fname, save_dir=save_dir)
             # Pass the unzipped file ending in ".EOF", not the ".zip"
             fname = fname.replace(".zip", "")
         saved_files.append(fname)
     return saved_files
 
 
-def _extract_zip(fname_zipped, delete=True):
+def _extract_zip(fname_zipped, save_dir=None, delete=True):
     # dirname = os.path.dirname(fname_zipped)
     with ZipFile(fname_zipped, "r") as zip_ref:
         # Extract the .EOF to the same direction as the .zip
-        zip_ref.extractall()
+        zip_ref.extractall(path=save_dir)
     if delete:
         os.remove(fname_zipped)
 
