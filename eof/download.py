@@ -275,7 +275,8 @@ def _download_and_write(mission, dt, save_dir="."):
 
 
 def _extract_zip(fname_zipped, save_dir=None, delete=True):
-    # dirname = os.path.dirname(fname_zipped)
+    if save_dir is None:
+        save_dir = os.path.dirname(fname_zipped)
     with ZipFile(fname_zipped, "r") as zip_ref:
         # Extract the .EOF to the same direction as the .zip
         zip_ref.extractall(path=save_dir)
