@@ -35,7 +35,13 @@ from eof import log
     type=click.Choice(["S1A", "S1B"]),
     help="Optionally specify Sentinel satellite to download (default: gets both S1A and S1B)",
 )
-def cli(search_path, save_dir, sentinel_file, date, mission):
+@click.option(
+    "--use-scihub",
+    is_flag=True,
+    default=False,
+    help="Use SciHub as primary provider to download orbits (default: False)",
+)
+def cli(search_path, save_dir, sentinel_file, date, mission, use_scihub):
     """Download Sentinel precise orbit files.
 
     Saves files to `save-dir` (default = current directory)
@@ -51,4 +57,5 @@ def cli(search_path, save_dir, sentinel_file, date, mission):
         sentinel_file=sentinel_file,
         mission=mission,
         date=date,
+        use_scihub=use_scihub,
     )
