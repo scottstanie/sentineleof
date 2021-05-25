@@ -1,14 +1,12 @@
 """sentinelsat based client to get orbit files form scihub.copernicu.eu."""
 
-
-import re
 import logging
 import datetime
 import operator
 import collections
-from typing import NamedTuple, Sequence
+from typing import Sequence
 
-from .products import Sentinel as S1Product
+from .products import SentinelOrbit, Sentinel as S1Product
 
 from sentinelsat import SentinelAPI
 
@@ -16,61 +14,28 @@ from sentinelsat import SentinelAPI
 _log = logging.getLogger(__name__)
 
 
-DATE_FMT = '%Y%m%dT%H%M%S'
-
-
 class ValidityError(ValueError):
     pass
 
 
-class ValidityInfo(NamedTuple):
-    product_id: str
-    generation_date: datetime.datetime
-    start_validity: datetime.datetime
-    stop_validity: datetime.datetime
-
-
-def get_validity_info(products: Sequence[str],
-                      pattern=None) -> Sequence[ValidityInfo]:
-    if pattern is None:
-        # use a generic pattern
-        pattern = re.compile(
-            r'S1\w+_(?P<generation_date>\d{8}T\d{6})_'
-            r'V(?P<start_validity>\d{8}T\d{6})_'
-            r'(?P<stop_validity>\d{8}T\d{6})\w*')
-
-    keys = ('generation_date', 'start_validity', 'stop_validity')
-    out = []
-    for product_id in products:
-        mobj = pattern.match(product_id)
-        if mobj:
-            validity_data = {
-                name: datetime.datetime.strptime(mobj.group(name), DATE_FMT)
-                for name in keys
-            }
-            out.append(ValidityInfo(product_id, **validity_data))
-        else:
-            raise ValueError(
-                f'"{product_id}" does not math the regular expression '
-                f'for validity')
-
-    return out
+def get_validity_info(products: Sequence[str]) -> Sequence[SentinelOrbit]:
+    return [SentinelOrbit(product_id) for product_id in products]
 
 
 def lastval_cover(t0: datetime.datetime, t1: datetime.datetime,
-                  data: Sequence[ValidityInfo]) -> str:
+                  data: Sequence[SentinelOrbit]) -> str:
     candidates = [
         item for item in data
-        if item.start_validity <= t0 and item.stop_validity >= t1
+        if item.start_time <= t0 and item.stop_time >= t1
     ]
     if not candidates:
         raise ValidityError(
             f'none of the input products completely covers the requested '
             f'time interval: [t0={t0}, t1={t1}]')
 
-    candidates.sort(key=operator.attrgetter('generation_date'), reverse=True)
+    candidates.sort(key=operator.attrgetter('created_time'), reverse=True)
 
-    return candidates[0].product_id
+    return candidates[0].filename
 
 
 class OrbitSelectionError(RuntimeError):
@@ -92,13 +57,13 @@ class ScihubGnssClient:
         assert satellite_id in {'S1A', 'S1B'}
         assert product_type in {'AUX_POEORB', 'AUX_RESORB'}
 
-        query_padams = dict(
+        query_params = dict(
             producttype=product_type,
             platformserialidentifier=satellite_id[1:],
             date=[t0, t1],
         )
-        _log.debug('query parameter: %s', query_padams)
-        products = self._api.query(**query_padams)
+        _log.debug('query parameter: %s', query_params)
+        products = self._api.query(**query_params)
         return products
 
     @staticmethod

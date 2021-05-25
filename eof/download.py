@@ -27,19 +27,19 @@ from zipfile import ZipFile
 import itertools
 import requests
 from multiprocessing.pool import ThreadPool
-from datetime import timedelta, datetime
+from datetime import timedelta
 from dateutil.parser import parse
 from .parsing import EOFLinkFinder
 from .products import Sentinel, SentinelOrbit
 from .log import logger
 
-MAX_WORKERS = 20  # For parallel downloading
+MAX_WORKERS_STEP = 6  # step.esa.int servers have stricter requirements
 
-BASE_URL = "http://step.esa.int/auxdata/orbits/Sentinel-1/{orbit_type}/{mission}/{dt}/"
-DT_FMT = "%Y/%m"
-# e.g. "http://aux.sentinel1.eo.esa.int/POEORB/2021/03/18/"
+# mirror server maintained by STEP team
 # This page has links with relative urls in the <a> tags, such as:
-# S1A_OPER_AUX_POEORB_OPOD_20210318T121438_V20210225T225942_20210227T005942.EOF
+# S1A_OPER_AUX_POEORB_OPOD_20210318T121438_V20210225T225942_20210227T005942.EOF.zip
+STEP_URL = "http://step.esa.int/auxdata/orbits/Sentinel-1/{orbit_type}/{mission}/{dt}/"
+DT_FMT = "%Y/%m"
 
 PRECISE_ORBIT = "POEORB"
 RESTITUTED_ORBIT = "RESORB"
@@ -80,24 +80,8 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
     orbit_dts = [parse(dt) if isinstance(dt, str) else dt for dt in orbit_dts]
 
     filenames = []
+    remaining_dates = []
 
-    if not use_scihub:
-        # Download and save all links in parallel
-        pool = ThreadPool(processes=MAX_WORKERS)
-        result_dt_dict = {
-            pool.apply_async(_download_and_write, (mission, dt, save_dir)): dt
-            for mission, dt in zip(missions, orbit_dts)
-        }
-
-        for result in result_dt_dict:
-            cur_filenames = result.get()
-            if cur_filenames is None:
-                use_scihub = True
-                continue
-            dt = result_dt_dict[result]
-            logger.info("Finished {}, saved to {}".format(dt.date(), cur_filenames))
-            filenames.extend(cur_filenames)
-    
     if use_scihub:
         # try to search on scihub
         from .scihubclient import ScihubGnssClient
@@ -107,22 +91,56 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
             query.update(client.query_orbit_for_product(sentinel_file))
         else:
             for mission, dt in zip(missions, orbit_dts):
-                result = client.query_orbit(dt, dt + timedelta(days=1),
-                                            mission, product_type='AUX_POEORB')
+                found_result = False
+                products = client.query_orbit(dt - ScihubGnssClient.T0,
+                                              dt + ScihubGnssClient.T1,
+                                              mission,
+                                              product_type='AUX_POEORB')
+                result = (client._select_orbit(products, dt, dt + timedelta(minutes=1))
+                          if products else None)
                 if result:
+                    found_result = True
                     query.update(result)
                 else:
                     # try with RESORB
-                    result = client.query_orbit(dt, dt + timedelta(minutes=1),
-                                                mission,
-                                                product_type='AUX_RESORB')
-                    query.update(result)
+                    products = client.query_orbit(dt - timedelta(hours=1),
+                                                  dt + timedelta(hours=1),
+                                                  mission,
+                                                  product_type='AUX_RESORB')
+                    result = (client._select_orbit(products, dt, dt + timedelta(minutes=1))
+                              if products else None)
+                    if result:
+                        found_result = True
+                        query.update(result)
+
+                if not found_result:
+                    remaining_dates.append((mission, dt))
 
         if query:
-            result = client.download_all(query)
+            result = client.download_all(query, directory_path=save_dir)
             filenames.extend(
                 item['path'] for item in result.downloaded.values()
             )
+    else:
+        # If forcing avoidance of scihub, all downloads remain
+        remaining_dates = zip(missions, orbit_dts)
+
+    # For failures from scihub, try step.esa.int
+    if remaining_dates:
+        # Download and save all links in parallel
+        pool = ThreadPool(processes=MAX_WORKERS_STEP)
+        result_dt_dict = {
+            pool.apply_async(_download_and_write, (mission, dt, save_dir)): dt
+            for mission, dt in remaining_dates
+        }
+
+        for result, dt in result_dt_dict.items():
+            cur_filenames = result.get()
+            if cur_filenames is None:
+                logger.error("Failed to download orbit for %s", dt.date())
+            else:
+                logger.info("Finished %s, saved to %s", dt.date(), cur_filenames)
+                filenames.extend(cur_filenames)
     
     return filenames
 
@@ -155,8 +173,7 @@ S1A_OPER_AUX_POEORB_OPOD_20210325T121917_V20210304T225942_20210306T005942.EOF.zi
     else:
         search_dt = start_dt
 
-    # TODO: take this out once the new ESA API is up.
-    url = BASE_URL.format(
+    url = STEP_URL.format(
         orbit_type=orbit_type, mission=mission, dt=search_dt.strftime(DT_FMT)
     )
 
@@ -249,8 +266,6 @@ def _download_and_write(mission, dt, save_dir="."):
         fname = os.path.join(save_dir, link.split("/")[-1])
         if os.path.isfile(fname):
             logger.info("%s already exists, skipping download.", link)
-            # TODO: If I return here.. do I ever want to iterate
-            # and save multiple links?
             return [fname]
 
         logger.info("Downloading %s", link)
@@ -260,24 +275,19 @@ def _download_and_write(mission, dt, save_dir="."):
         with open(fname, "wb") as f:
             f.write(response.content)
         if fname.endswith(".zip"):
-            _extract_zip(fname)
+            _extract_zip(fname, save_dir=save_dir)
             # Pass the unzipped file ending in ".EOF", not the ".zip"
             fname = fname.replace(".zip", "")
         saved_files.append(fname)
     return saved_files
 
 
-def _extract_zip(fname_zipped, delete=True):
-    # dirname = os.path.dirname(fname_zipped)
-    outdir = os.path.dirname(fname_zipped)
+def _extract_zip(fname_zipped, save_dir=None, delete=True):
+    if save_dir is None:
+        save_dir = os.path.dirname(fname_zipped)
     with ZipFile(fname_zipped, "r") as zip_ref:
         # Extract the .EOF to the same direction as the .zip
-        for name in zip_ref.namelist():
-            data = zip_ref.read(name)
-            newname = os.path.join(outdir, os.path.basename(name))
-            with open(newname, 'wb') as fd:
-                fd.write(data)
-
+        zip_ref.extractall(path=save_dir)
     if delete:
         os.remove(fname_zipped)
 

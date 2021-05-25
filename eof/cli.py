@@ -36,10 +36,10 @@ from eof import log
     help="Optionally specify Sentinel satellite to download (default: gets both S1A and S1B)",
 )
 @click.option(
-    "--use-scihub",
-    is_flag=True,
-    default=False,
-    help="Use SciHub as primary provider to download orbits (default: False)",
+    "--use-scihub/--no-use-scihub",
+    default=True,
+    help="Use SciHub as primary provider to download orbits",
+    show_default=True,
 )
 def cli(search_path, save_dir, sentinel_file, date, mission, use_scihub):
     """Download Sentinel precise orbit files.

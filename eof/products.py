@@ -307,7 +307,7 @@ class SentinelOrbit(Base):
     """
 
     FILE_REGEX = (
-        r"(S1A|S1B)_OPER_AUX_([\w_]{6})_OPOD_([T\d]{15})_V([T\d]{15})_([T\d]{15}).EOF"
+        r"(S1A|S1B)_OPER_AUX_([\w_]{6})_OPOD_([T\d]{15})_V([T\d]{15})_([T\d]{15})"
     )
     TIME_FMT = "%Y%m%dT%H%M%S"
     _FIELD_MEANINGS = (
