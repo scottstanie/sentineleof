@@ -100,7 +100,8 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
                 else:
                     # try with RESORB
                     found_result = True
-                    result = client.query_orbit(dt, dt + timedelta(minutes=1),
+                    result = client.query_orbit(dt - ScihubGnssClient.T0, 
+                                                dt + ScihubGnssClient.T1,
                                                 mission,
                                                 product_type='AUX_RESORB')
                     query.update(result)
@@ -122,7 +123,7 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
         pool = ThreadPool(processes=MAX_WORKERS_STEP)
         result_dt_dict = {
             pool.apply_async(_download_and_write, (mission, dt, save_dir)): dt
-            for mission, dt in zip(missions, orbit_dts)
+            for mission, dt in remaining_dates
         }
 
         for result, dt in result_dt_dict.items():
