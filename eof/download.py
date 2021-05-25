@@ -102,8 +102,8 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
                 else:
                     # try with RESORB
                     found_result = True
-                    result = client.query_orbit(dt,
-                                                dt + timedelta(minutes=1),
+                    result = client.query_orbit(dt - timedelta(hours=1),
+                                                dt + timedelta(hours=1),
                                                 mission,
                                                 product_type='AUX_RESORB')
                     query.update(result)
