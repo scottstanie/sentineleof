@@ -92,21 +92,27 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
         else:
             for mission, dt in zip(missions, orbit_dts):
                 found_result = False
-                result = client.query_orbit(dt - ScihubGnssClient.T0,
-                                            dt + ScihubGnssClient.T1,
-                                            mission,
-                                            product_type='AUX_POEORB')
+                products = client.query_orbit(dt - ScihubGnssClient.T0,
+                                              dt + ScihubGnssClient.T1,
+                                              mission,
+                                              product_type='AUX_POEORB')
+                result = (client._select_orbit(products, dt, dt + timedelta(minutes=1))
+                          if products else None)
                 if result:
                     found_result = True
                     query.update(result)
                 else:
                     # try with RESORB
-                    found_result = True
-                    result = client.query_orbit(dt - timedelta(hours=1),
-                                                dt + timedelta(hours=1),
-                                                mission,
-                                                product_type='AUX_RESORB')
-                    query.update(result)
+                    products = client.query_orbit(dt - timedelta(hours=1),
+                                                  dt + timedelta(hours=1),
+                                                  mission,
+                                                  product_type='AUX_RESORB')
+                    result = (client._select_orbit(products, dt, dt + timedelta(minutes=1))
+                              if products else None)
+                    if result:
+                        found_result = True
+                        query.update(result)
+
                 if not found_result:
                     remaining_dates.append((mission, dt))
 
