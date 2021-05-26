@@ -141,7 +141,7 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
             else:
                 logger.info("Finished %s, saved to %s", dt.date(), cur_filenames)
                 filenames.extend(cur_filenames)
-    
+
     return filenames
 
 
@@ -288,6 +288,14 @@ def _extract_zip(fname_zipped, save_dir=None, delete=True):
     with ZipFile(fname_zipped, "r") as zip_ref:
         # Extract the .EOF to the same direction as the .zip
         zip_ref.extractall(path=save_dir)
+
+        # check that there's not a nested zip structure
+        zipped = zip_ref.namelist()[0]
+        zipped_dir = os.path.dirname(zipped)
+        if zipped_dir:
+            no_subdir = os.path.join(save_dir, os.path.split(zipped)[1])
+            os.rename(os.path.join(save_dir, zipped), no_subdir)
+            os.rmdir(os.path.join(save_dir, zipped_dir))
     if delete:
         os.remove(fname_zipped)
 
