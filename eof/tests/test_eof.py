@@ -159,5 +159,5 @@ class TestEOF(unittest.TestCase):
             orbit_dts=["20200101"],
             sentinel_file=None,
             save_dir=",",
-            use_scihub=False,
+            use_scihub=True,
         )
