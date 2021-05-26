@@ -46,7 +46,7 @@ RESTITUTED_ORBIT = "RESORB"
 
 
 def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".",
-                  use_scihub: bool = False):
+                  use_scihub: bool = True):
     """Downloads and saves EOF files for specific dates
 
     Args:
@@ -56,7 +56,7 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
         sentinel_file (str): path to Sentinel-1 filename to download one .EOF for
         save_dir (str): directory to save the EOF files into
         use_scihub (bool): use SciHub to download orbits
-            (if False SciHUb is used only as a fallback)
+            (if False, SciHUb is used only as a fallback)
 
     Returns:
         list[str]: all filenames of saved orbit files
@@ -354,7 +354,7 @@ def find_scenes_to_download(search_path="./", save_dir="./"):
 
 
 def main(search_path=".", save_dir=",", sentinel_file=None, mission=None, date=None,
-         use_scihub: bool = False):
+         use_scihub: bool = True):
     """Function used for entry point to download eofs"""
 
     if not os.path.exists(save_dir):
