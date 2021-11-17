@@ -1,5 +1,5 @@
 """Module for parsing the orbit state vectors (OSVs) from the .EOF file"""
-from datetime import datetime
+from datetime import datetime, timezone
 from xml.etree import ElementTree
 from html.parser import HTMLParser
 from .log import logger
@@ -36,7 +36,9 @@ class EOFLinkFinder(HTMLParser):
 def parse_utc_string(timestring):
     #    dt = datetime.strptime(timestring, 'TAI=%Y-%m-%dT%H:%M:%S.%f')
     #    dt = datetime.strptime(timestring, 'UT1=%Y-%m-%dT%H:%M:%S.%f')
-    return datetime.strptime(timestring, "UTC=%Y-%m-%dT%H:%M:%S.%f")
+    return datetime.strptime(timestring, "UTC=%Y-%m-%dT%H:%M:%S.%f").replace(
+        tzinfo=timezone.utc
+    )
 
 
 def secs_since_midnight(dt):
@@ -55,6 +57,10 @@ def parse_orbit(
     max_time=datetime(2100, 1, 1),
     extra_osvs=1,
 ):
+    if min_time.tzinfo is None:
+        min_time = min_time.replace(tzinfo=timezone.utc)
+    if max_time.tzinfo is None:
+        max_time = max_time.replace(tzinfo=timezone.utc)
 
     logger.info(
         "parsing OSVs from %s between %s and %s",
@@ -66,6 +72,7 @@ def parse_orbit(
     root = tree.getroot()
     all_osvs = []
     idxs_in_range = []
+
     for idx, osv in enumerate(root.findall("./Data_Block/List_of_OSVs/OSV")):
         all_osvs.append(osv)
         utc_dt = _convert_osv_field(osv, "UTC", parse_utc_string)
