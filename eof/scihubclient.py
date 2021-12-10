@@ -1,6 +1,7 @@
 """sentinelsat based client to get orbit files form scihub.copernicu.eu."""
 
 import logging
+import requests
 import datetime
 import operator
 import collections
@@ -106,3 +107,30 @@ class ScihubGnssClient:
         of arguments.
         """
         return self._api.download_all(products, **kwargs)
+
+
+class ASFClient:
+    url = 'https://s1qc.asf.alaska.edu/aux_poeorb/'
+
+    def get_eof_list(self, dt):
+        from .parsing import EOFLinkFinder
+
+        resp = requests.get(self.url)
+        finder = EOFLinkFinder()
+        finder.feed(resp.text)
+        return [SentinelOrbit(f) for f in finder.eof_links]
+    
+    def get_download_url(self, dt):
+        filename = lastval_cover(dt, dt, self.get_eof_list(dt))
+
+    # def _find_straddling_orbit(test_dt, all_eofs):
+    #     straddling = [orb for orb in all_eofs if  orb.start_time.date() < test_dt.date() < orb.stop_time.date()]
+    #     if len(straddling) == 0:
+    #         raise ValueError("No matching orbit found for {}".format(str(test_dt)))
+    #     return straddling
+# In [45]: [ff.filename for ff in _find_straddling_orbit(test, sobs)]
+# Out[45]:
+# ['S1B_OPER_AUX_POEORB_OPOD_20200909T111317_V20200819T225942_20200821T005942.EOF',
+#  'S1A_OPER_AUX_POEORB_OPOD_20200909T121359_V20200819T225942_20200821T005942.EOF',
+#  'S1A_OPER_AUX_POEORB_OPOD_20210317T080741_V20200819T225942_20200821T005942.EOF',
+#  'S1B_OPER_AUX_POEORB_OPOD_20210317T064752_V20200819T225942_20200821T005942.EOF']

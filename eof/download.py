@@ -92,6 +92,7 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
         else:
             for mission, dt in zip(missions, orbit_dts):
                 found_result = False
+                # TODO: catch sentinelsat.exceptions.ServerError
                 products = client.query_orbit(dt - ScihubGnssClient.T0,
                                               dt + ScihubGnssClient.T1,
                                               mission,
@@ -103,6 +104,7 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
                     query.update(result)
                 else:
                     # try with RESORB
+                    # TODO: catch sentinelsat.exceptions.ServerError
                     products = client.query_orbit(dt - timedelta(hours=1),
                                                   dt + timedelta(hours=1),
                                                   mission,
