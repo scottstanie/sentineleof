@@ -29,6 +29,7 @@ import requests
 from multiprocessing.pool import ThreadPool
 from datetime import timedelta
 from dateutil.parser import parse
+from .scihubclient import ScihubGnssClient
 from .parsing import EOFLinkFinder
 from .products import Sentinel, SentinelOrbit
 from .log import logger
@@ -81,44 +82,17 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
 
     filenames = []
     remaining_dates = []
-
-
+    client = ScihubGnssClient()
+    # First, check that Scihub isn't having issues
+    scihub_is_up = client()
+    use_scihub = use_scihub and scihub_is_up
 
     if use_scihub:
         # try to search on scihub
-        from .scihubclient import ScihubGnssClient
-        client = ScihubGnssClient()
-        query = {}
         if sentinel_file:
-            query.update(client.query_orbit_for_product(sentinel_file))
+            query = client.query_orbit_for_product(sentinel_file)
         else:
-            for mission, dt in zip(missions, orbit_dts):
-                found_result = False
-                # TODO: catch sentinelsat.exceptions.ServerError
-                products = client.query_orbit(dt - ScihubGnssClient.T0,
-                                              dt + ScihubGnssClient.T1,
-                                              mission,
-                                              product_type='AUX_POEORB')
-                result = (client._select_orbit(products, dt, dt + timedelta(minutes=1))
-                          if products else None)
-                if result:
-                    found_result = True
-                    query.update(result)
-                else:
-                    # try with RESORB
-                    # TODO: catch sentinelsat.exceptions.ServerError
-                    products = client.query_orbit(dt - timedelta(hours=1),
-                                                  dt + timedelta(hours=1),
-                                                  mission,
-                                                  product_type='AUX_RESORB')
-                    result = (client._select_orbit(products, dt, dt + timedelta(minutes=1))
-                              if products else None)
-                    if result:
-                        found_result = True
-                        query.update(result)
-
-                if not found_result:
-                    remaining_dates.append((mission, dt))
+            query = client.query_orbit_by_dt(missions, orbit_dts)
 
         if query:
             result = client.download_all(query, directory_path=save_dir)
