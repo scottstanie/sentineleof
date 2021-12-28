@@ -19,10 +19,6 @@ class ValidityError(ValueError):
     pass
 
 
-def get_validity_info(products: Sequence[str]) -> Sequence[SentinelOrbit]:
-    return [SentinelOrbit(product_id) for product_id in products]
-
-
 def lastval_cover(
     t0: datetime.datetime, t1: datetime.datetime, data: Sequence[SentinelOrbit]
 ) -> str:
@@ -78,7 +74,7 @@ class ScihubGnssClient:
         if not products:
             return {}
         orbit_products = [p["identifier"] for p in products.values()]
-        validity_info = get_validity_info(orbit_products)
+        validity_info = [SentinelOrbit(product_id) for product_id in orbit_products]
         product_id = lastval_cover(t0, t1, validity_info)
         return {k: v for k, v in products.items() if v["identifier"] == product_id}
 
@@ -208,17 +204,4 @@ class ASFClient:
 
     def get_download_url(self, dt):
         filename = lastval_cover(dt, dt, self.get_eof_list(dt))
-
-    # def _find_straddling_orbit(test_dt, all_eofs):
-    #     straddling = [orb for orb in all_eofs if  orb.start_time.date() < test_dt.date() < orb.stop_time.date()]
-    #     if len(straddling) == 0:
-    #         raise ValueError("No matching orbit found for {}".format(str(test_dt)))
-    #     return straddling
-
-
-# In [45]: [ff.filename for ff in _find_straddling_orbit(test, sobs)]
-# Out[45]:
-# ['S1B_OPER_AUX_POEORB_OPOD_20200909T111317_V20200819T225942_20200821T005942.EOF',
-#  'S1A_OPER_AUX_POEORB_OPOD_20200909T121359_V20200819T225942_20200821T005942.EOF',
-#  'S1A_OPER_AUX_POEORB_OPOD_20210317T080741_V20200819T225942_20200821T005942.EOF',
-#  'S1B_OPER_AUX_POEORB_OPOD_20210317T064752_V20200819T225942_20200821T005942.EOF']
+        return self.url + filename
