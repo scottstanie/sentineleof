@@ -56,7 +56,7 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
         sentinel_file (str): path to Sentinel-1 filename to download one .EOF for
         save_dir (str): directory to save the EOF files into
         use_scihub (bool): use SciHub to download orbits
-            (if False, SciHUb is used only as a fallback)
+            (if False, STEP or ASF is used to download)
 
     Returns:
         list[str]: all filenames of saved orbit files
@@ -81,6 +81,8 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
 
     filenames = []
     remaining_dates = []
+
+
 
     if use_scihub:
         # try to search on scihub

@@ -10,6 +10,7 @@ from typing import Sequence
 from .products import SentinelOrbit, Sentinel as S1Product
 
 from sentinelsat import SentinelAPI
+from sentinelsat.exceptions import ServerError
 
 
 _log = logging.getLogger(__name__)
@@ -107,6 +108,16 @@ class ScihubGnssClient:
         of arguments.
         """
         return self._api.download_all(products, **kwargs)
+    
+    def server_is_up(self):
+        """Ping the ESA server using sentinelsat to verify the connection."""
+        try:
+            self._api.query(producttype='AUX_POEORB',
+                            platformserialidentifier='S1A')
+            return True
+        except ServerError as e:
+            _log.warning('Cannot connect to the server: %s', e)
+            return False
 
 
 class ASFClient:
