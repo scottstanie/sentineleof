@@ -27,26 +27,16 @@ from zipfile import ZipFile
 import itertools
 import requests
 from multiprocessing.pool import ThreadPool
-from datetime import timedelta
 from dateutil.parser import parse
-from .parsing import EOFLinkFinder
+from .scihubclient import ASFClient, ScihubGnssClient
 from .products import Sentinel, SentinelOrbit
 from .log import logger
 
-MAX_WORKERS_STEP = 6  # step.esa.int servers have stricter requirements
-
-# mirror server maintained by STEP team
-# This page has links with relative urls in the <a> tags, such as:
-# S1A_OPER_AUX_POEORB_OPOD_20210318T121438_V20210225T225942_20210227T005942.EOF.zip
-STEP_URL = "http://step.esa.int/auxdata/orbits/Sentinel-1/{orbit_type}/{mission}/{dt}/"
-DT_FMT = "%Y/%m"
-
-PRECISE_ORBIT = "POEORB"
-RESTITUTED_ORBIT = "RESORB"
+MAX_WORKERS = 6  # workers to download in parallel (for ASF backup)
 
 
 def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".",
-                  use_scihub: bool = True):
+                  orbit_type="precise"):
     """Downloads and saves EOF files for specific dates
 
     Args:
@@ -55,8 +45,7 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
             No input downloads both, must be same len as orbit_dts
         sentinel_file (str): path to Sentinel-1 filename to download one .EOF for
         save_dir (str): directory to save the EOF files into
-        use_scihub (bool): use SciHub to download orbits
-            (if False, SciHUb is used only as a fallback)
+        orbit_type (str): precise or restituted
 
     Returns:
         list[str]: all filenames of saved orbit files
@@ -80,206 +69,73 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
     orbit_dts = [parse(dt) if isinstance(dt, str) else dt for dt in orbit_dts]
 
     filenames = []
-    remaining_dates = []
+    scihub_successful = False
+    client = ScihubGnssClient()
 
-    if use_scihub:
+    # First, check that Scihub isn't having issues
+    if client.server_is_up():
         # try to search on scihub
-        from .scihubclient import ScihubGnssClient
-        client = ScihubGnssClient()
-        query = {}
         if sentinel_file:
-            query.update(client.query_orbit_for_product(sentinel_file))
+            query = client.query_orbit_for_product(sentinel_file, orbit_type=orbit_type)
         else:
-            for mission, dt in zip(missions, orbit_dts):
-                found_result = False
-                products = client.query_orbit(dt - ScihubGnssClient.T0,
-                                              dt + ScihubGnssClient.T1,
-                                              mission,
-                                              product_type='AUX_POEORB')
-                result = (client._select_orbit(products, dt, dt + timedelta(minutes=1))
-                          if products else None)
-                if result:
-                    found_result = True
-                    query.update(result)
-                else:
-                    # try with RESORB
-                    products = client.query_orbit(dt - timedelta(hours=2),
-                                                  dt + timedelta(hours=2),
-                                                  mission,
-                                                  product_type='AUX_RESORB')
-                    result = (client._select_orbit(products, dt, dt + timedelta(minutes=1))
-                              if products else None)
-                    if result:
-                        found_result = True
-                        query.update(result)
-
-                if not found_result:
-                    remaining_dates.append((mission, dt))
+            query = client.query_orbit_by_dt(orbit_dts, missions, orbit_type=orbit_type)
 
         if query:
             result = client.download_all(query, directory_path=save_dir)
             filenames.extend(
                 item['path'] for item in result.downloaded.values()
             )
-    else:
-        # If forcing avoidance of scihub, all downloads remain
-        remaining_dates = zip(missions, orbit_dts)
+            scihub_successful = True
 
-    # For failures from scihub, try step.esa.int
-    if remaining_dates:
+    # For failures from scihub, try ASF
+    if not scihub_successful:
+        logger.warning("Scihub failed, trying ASF")
+        asfclient = ASFClient()
+        urls = asfclient.get_download_urls(orbit_dts, missions, orbit_type=orbit_type)
         # Download and save all links in parallel
-        pool = ThreadPool(processes=MAX_WORKERS_STEP)
-        result_dt_dict = {
-            pool.apply_async(_download_and_write, (mission, dt, save_dir)): dt
-            for mission, dt in remaining_dates
+        pool = ThreadPool(processes=MAX_WORKERS)
+        result_url_dict = {
+            pool.apply_async(_download_and_write, (url,)): url
+            for url in urls
         }
 
-        for result, dt in result_dt_dict.items():
+        for result, url in result_url_dict.items():
             cur_filenames = result.get()
             if cur_filenames is None:
-                logger.error("Failed to download orbit for %s", dt.date())
+                logger.error("Failed to download orbit for %s", url)
             else:
-                logger.info("Finished %s, saved to %s", dt.date(), cur_filenames)
-                filenames.extend(cur_filenames)
+                logger.info("Finished %s, saved to %s", url, cur_filenames)
+                filenames.append(cur_filenames)
 
     return filenames
 
 
-def eof_list(start_dt, mission, orbit_type=PRECISE_ORBIT):
-    """Download the list of .EOF files for a specific date
-
-    Args:
-        start_dt (str or datetime): Year month day of validity start for orbit file
-
-    Returns:
-        list: urls of EOF files
-
-    Raises:
-        ValueError: if start_dt returns no results
-
-    Usage:
-    >>> from datetime import datetime
-    >>> eof_list(datetime(2021, 3, 4), "S1A")
-    (['http://step.esa.int/auxdata/orbits/Sentinel-1/POEORB/S1A/2021/03/\
-S1A_OPER_AUX_POEORB_OPOD_20210325T121917_V20210304T225942_20210306T005942.EOF.zip'], 'POEORB')
-    """
-    # The step.esa.int/auxdata page stotes all files for one month, but they start, e.g.:
-    # ...V20190501T225942_...
-    # with validity time at 22:59 on the 1st of the month
-    # If the desired data is on day 1 of a month, but starts before 22:59,
-    # need to search the previous month's page
-    if start_dt.day == 1 and start_dt.hour < 23:
-        search_dt = start_dt - timedelta(days=1)
-    else:
-        search_dt = start_dt
-
-    url = STEP_URL.format(
-        orbit_type=orbit_type, mission=mission, dt=search_dt.strftime(DT_FMT)
-    )
-
-    logger.info("Searching for EOFs at {}".format(url))
-    response = requests.get(url)
-    if response.status_code == 404:
-        if orbit_type == PRECISE_ORBIT:
-            logger.warning(
-                "Precise orbits not avilable yet for {}, trying RESORB".format(
-                    search_dt
-                )
-            )
-            return eof_list(start_dt, mission, orbit_type=RESTITUTED_ORBIT)
-        else:
-            raise ValueError("Orbits not avilable yet for {}".format(search_dt))
-    # Check for any other problem
-    response.raise_for_status()
-
-    parser = EOFLinkFinder()
-    parser.feed(response.text)
-    # Append the test url, since the links on the page are relative (don't contain full url)
-    # Now the URL separates S1A and S1B, so no need for this
-    # links = [url + link for link in parser.eof_links if link.startswith(mission)]
-    links = [url + link for link in parser.eof_links]
-
-    if len(links) < 1:
-        if orbit_type == PRECISE_ORBIT:
-            logger.warning(
-                "No precise orbit files found for {} on {}, searching RESORB".format(
-                    mission, start_dt.strftime(DT_FMT)
-                )
-            )
-            return eof_list(start_dt, mission, orbit_type=RESTITUTED_ORBIT)
-
-        raise ValueError(
-            "No EOF files found for {} on {} at {}".format(
-                start_dt.strftime(DT_FMT), mission, url
-            )
-        )
-    return links, orbit_type
-
-
-def _dedupe_links(links):
-    out = [links[0]]
-    orb1 = SentinelOrbit(links[0].split("/")[-1])
-    for link in links[1:]:
-        if SentinelOrbit(link.split("/")[-1]).date != orb1.date:
-            out.append(link)
-    return out
-
-
-def _pick_precise_file(links, sent_date):
-    """Choose the precise file with (sent_date - 1, sent_date + 1)"""
-    out = []
-    for link in links:
-        so = SentinelOrbit(link.split("/")[-1])
-        # hotfix until I figure out what the RAW processor is doing with the orbtimings
-        if (so.start_time.date() == (sent_date - timedelta(days=1)).date()) and (
-            so.stop_time.date() == (sent_date + timedelta(days=1)).date()
-        ):
-            out.append(link)
-    return out
-
-
-def _download_and_write(mission, dt, save_dir="."):
+def _download_and_write(url, save_dir="."):
     """Wrapper function to run the link downloading in parallel
 
     Args:
-        mission (str): Sentinel mission: either S1A or S1B
-        dt (datetime): datetime of Sentinel product
+        url (str): url of orbit file to download
         save_dir (str): directory to save the EOF files into
 
     Returns:
         list[str]: Filenames to which the orbit files have been saved
     """
-    try:
-        cur_links, orbit_type = eof_list(dt, mission)
-    except ValueError as e:  # 0 found for date
-        logger.warning(e.args[0])
-        logger.warning("Skipping {}".format(dt.strftime("%Y-%m-%d")))
-        return
+    fname = os.path.join(save_dir, url.split("/")[-1])
+    if os.path.isfile(fname):
+        logger.info("%s already exists, skipping download.", url)
+        return [fname]
 
-    cur_links = _dedupe_links(cur_links)
-    if orbit_type == PRECISE_ORBIT:
-        cur_links = _pick_precise_file(cur_links, dt)
-
-    # RESORB has multiple overlapping
-    saved_files = []
-    for link in cur_links:
-        fname = os.path.join(save_dir, link.split("/")[-1])
-        if os.path.isfile(fname):
-            logger.info("%s already exists, skipping download.", link)
-            return [fname]
-
-        logger.info("Downloading %s", link)
-        response = requests.get(link)
-        response.raise_for_status()
-        logger.info("Saving to %s", fname)
-        with open(fname, "wb") as f:
-            f.write(response.content)
-        if fname.endswith(".zip"):
-            _extract_zip(fname, save_dir=save_dir)
-            # Pass the unzipped file ending in ".EOF", not the ".zip"
-            fname = fname.replace(".zip", "")
-        saved_files.append(fname)
-    return saved_files
+    logger.info("Downloading %s", url)
+    response = requests.get(url)
+    response.raise_for_status()
+    logger.info("Saving to %s", fname)
+    with open(fname, "wb") as f:
+        f.write(response.content)
+    if fname.endswith(".zip"):
+        _extract_zip(fname, save_dir=save_dir)
+        # Pass the unzipped file ending in ".EOF", not the ".zip"
+        fname = fname.replace(".zip", "")
+    return fname
 
 
 def _extract_zip(fname_zipped, save_dir=None, delete=True):
@@ -353,8 +209,7 @@ def find_scenes_to_download(search_path="./", save_dir="./"):
     return orbit_dts, missions
 
 
-def main(search_path=".", save_dir=",", sentinel_file=None, mission=None, date=None,
-         use_scihub: bool = True):
+def main(search_path=".", save_dir=",", sentinel_file=None, mission=None, date=None, orbit_type="precise"):
     """Function used for entry point to download eofs"""
 
     if not os.path.exists(save_dir):
@@ -386,5 +241,5 @@ def main(search_path=".", save_dir=",", sentinel_file=None, mission=None, date=N
         missions=missions,
         sentinel_file=sentinel_file,
         save_dir=save_dir,
-        use_scihub=use_scihub,
+        orbit_type=orbit_type,
     )
