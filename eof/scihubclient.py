@@ -61,8 +61,10 @@ class ScihubGnssClient:
         query_params = dict(
             producttype=product_type,
             platformserialidentifier=satellite_id[1:],
+            # this has weird endpoint inclusion
             # https://github.com/sentinelsat/sentinelsat/issues/551#issuecomment-992344180
             # date=[t0, t1],
+            # use the following instead
             beginposition=(None, t1),
             endposition=(t0, None),
         )
@@ -205,8 +207,6 @@ class ASFClient:
         if orbit_type not in self.urls.keys():
             raise ValueError(f"Unknown orbit type: {orbit_type}")
 
-        breakpoint()
-        # TODO: Cache the list of EOFs if searched already?
         if self.eof_lists.get(orbit_type) is not None:
             return self.eof_lists[orbit_type]
         # Try to see if we have the list of EOFs in the cache
@@ -215,7 +215,8 @@ class ASFClient:
             # Need to clear it if it's older than what we're looking for
             max_saved = max([e.start_time for e in eof_list])
             if max_saved < max_dt:
-                logger.warning(f"Clearing cached EOF list, {max_saved} is older than requested {max_dt}")
+                logger.warning(f"Clearing cached {orbit_type} EOF list:")
+                logger.warning(f"{max_saved} is older than requested {max_dt}")
                 self._clear_cache(orbit_type)
             else:
                 logger.info("Using cached EOF list")
