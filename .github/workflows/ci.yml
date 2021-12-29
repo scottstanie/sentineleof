@@ -9,7 +9,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.5", "3.6", "3.7", "3.8", "3.9", "3.10"]
+        python-version: ["3.6", "3.7", "3.8", "3.9", "3.10"]
         include:
         - os: windows-latest
           python-version: "3.10"
@@ -28,4 +28,4 @@ jobs:
         python -m pip install requests click python-dateutil sentinelsat>=1.0 pytest responses
     - name: Test with pytest
       run: |
-        python -m pytest -v -W=error
+        python -m pytest -v -W=error --doctest-modules --ignore=eof/__main__.py
