@@ -34,12 +34,9 @@ from .log import logger
 
 MAX_WORKERS = 6  # workers to download in parallel (for ASF backup)
 
-PRECISE_ORBIT = "POEORB"
-RESTITUTED_ORBIT = "RESORB"
-
 
 def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".",
-                  use_scihub: bool = True):
+                  orbit_type="precise"):
     """Downloads and saves EOF files for specific dates
 
     Args:
@@ -48,8 +45,7 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
             No input downloads both, must be same len as orbit_dts
         sentinel_file (str): path to Sentinel-1 filename to download one .EOF for
         save_dir (str): directory to save the EOF files into
-        use_scihub (bool): use SciHub to download orbits
-            (if False, ASF is used to download)
+        orbit_type (str): precise or restituted
 
     Returns:
         list[str]: all filenames of saved orbit files
@@ -73,31 +69,28 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
     orbit_dts = [parse(dt) if isinstance(dt, str) else dt for dt in orbit_dts]
 
     filenames = []
-    dates_remain = False
+    scihub_successful = False
     client = ScihubGnssClient()
-    # First, check that Scihub isn't having issues
-    use_scihub = use_scihub and client.server_is_up()
 
-    if use_scihub:
+    # First, check that Scihub isn't having issues
+    if client.server_is_up():
         # try to search on scihub
         if sentinel_file:
-            query = client.query_orbit_for_product(sentinel_file)
+            query = client.query_orbit_for_product(sentinel_file, orbit_type=orbit_type)
         else:
-            query = client.query_orbit_by_dt(missions, orbit_dts)
+            query = client.query_orbit_by_dt(missions, orbit_dts, orbit_type=orbit_type)
 
         if query:
             result = client.download_all(query, directory_path=save_dir)
             filenames.extend(
                 item['path'] for item in result.downloaded.values()
             )
-    else:
-        # If forcing avoidance of scihub, use ASF for rest (or all)
-        dates_remain = True
+            scihub_successful = True
 
     # For failures from scihub, try ASF
-    if dates_remain:
+    if not scihub_successful:
         asfclient = ASFClient()
-        urls = asfclient.get_download_urls(orbit_dts, missions)
+        urls = asfclient.get_download_urls(orbit_dts, missions, orbit_type=orbit_type)  
         # Download and save all links in parallel
         pool = ThreadPool(processes=MAX_WORKERS)
         result_url_dict = {
@@ -215,8 +208,7 @@ def find_scenes_to_download(search_path="./", save_dir="./"):
     return orbit_dts, missions
 
 
-def main(search_path=".", save_dir=",", sentinel_file=None, mission=None, date=None,
-         use_scihub: bool = True):
+def main(search_path=".", save_dir=",", sentinel_file=None, mission=None, date=None, orbit_type="precise"):
     """Function used for entry point to download eofs"""
 
     if not os.path.exists(save_dir):
@@ -248,5 +240,5 @@ def main(search_path=".", save_dir=",", sentinel_file=None, mission=None, date=N
         missions=missions,
         sentinel_file=sentinel_file,
         save_dir=save_dir,
-        use_scihub=use_scihub,
+        orbit_type=orbit_type,
     )
