@@ -161,7 +161,7 @@ def find_current_eofs(cur_path):
     return sorted(
         [
             SentinelOrbit(filename)
-            for filename in glob.glob(os.path.join(cur_path, "*EOF"))
+            for filename in glob.glob(os.path.join(cur_path, "S1*OPER*.EOF"))
         ]
     )
 
