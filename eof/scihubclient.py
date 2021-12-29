@@ -45,13 +45,8 @@ class ScihubGnssClient:
     T0 = datetime.timedelta(days=1)
     T1 = datetime.timedelta(days=1)
 
-    def __init__(
-        self,
-        user: str = "gnssguest",
-        password: str = "gnssguest",
-        api_url: str = "https://scihub.copernicus.eu/gnss/",
-        **kwargs,
-    ):
+    def __init__(self, user: str = "gnssguest", password: str = "gnssguest",
+                 api_url: str = "https://scihub.copernicus.eu/gnss/", **kwargs):
         self._api = SentinelAPI(user=user, password=password, api_url=api_url, **kwargs)
 
     def query_orbit(self, t0, t1, satellite_id: str, product_type: str = "AUX_POEORB"):
