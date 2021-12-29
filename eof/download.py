@@ -78,7 +78,7 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
         if sentinel_file:
             query = client.query_orbit_for_product(sentinel_file, orbit_type=orbit_type)
         else:
-            query = client.query_orbit_by_dt(missions, orbit_dts, orbit_type=orbit_type)
+            query = client.query_orbit_by_dt(orbit_dts, missions, orbit_type=orbit_type)
 
         if query:
             result = client.download_all(query, directory_path=save_dir)
@@ -89,12 +89,13 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
 
     # For failures from scihub, try ASF
     if not scihub_successful:
+        logger.warning("Scihub failed, trying ASF")
         asfclient = ASFClient()
-        urls = asfclient.get_download_urls(orbit_dts, missions, orbit_type=orbit_type)  
+        urls = asfclient.get_download_urls(orbit_dts, missions, orbit_type=orbit_type)
         # Download and save all links in parallel
         pool = ThreadPool(processes=MAX_WORKERS)
         result_url_dict = {
-            pool.apply_async(_download_and_write, url): url
+            pool.apply_async(_download_and_write, (url,)): url
             for url in urls
         }
 

@@ -12,8 +12,8 @@ from .products import SentinelOrbit, Sentinel as S1Product
 from sentinelsat import SentinelAPI
 from sentinelsat.exceptions import ServerError
 
-
-_log = logging.getLogger(__name__)
+# logger = logging.getLogger(__name__)
+from .log import logger
 
 
 class ValidityError(ValueError):
@@ -66,7 +66,7 @@ class ScihubGnssClient:
             beginposition=(None, t1),
             endposition=(t0, None),
         )
-        _log.debug("query parameter: %s", query_params)
+        logger.debug("query parameter: %s", query_params)
         products = self._api.query(**query_params)
         return products
 
@@ -163,7 +163,7 @@ class ScihubGnssClient:
                 remaining_dates.append((mission, dt))
 
         if remaining_dates:
-            _log.warning("The following dates were not found: %s", remaining_dates)
+            logger.warning("The following dates were not found: %s", remaining_dates)
         return query
 
     def download(self, uuid, **kwargs):
@@ -188,15 +188,15 @@ class ScihubGnssClient:
             self._api.query(producttype="AUX_POEORB", platformserialidentifier="S1A")
             return True
         except ServerError as e:
-            _log.warning("Cannot connect to the server: %s", e)
+            logger.warning("Cannot connect to the server: %s", e)
             return False
 
 
 class ASFClient:
     precise_url = "https://s1qc.asf.alaska.edu/aux_poeorb/"
     res_url = "https://s1qc.asf.alaska.edu/aux_resorb/"
-    eof_lists = {"precise": None, "restituted": None}
     urls = {"precise": precise_url, "restituted": res_url}
+    eof_lists = {"precise": None, "restituted": None}
 
     def get_full_eof_list(self, orbit_type="precise", max_dt=None):
         """Get the list of orbit files from the ASF server."""
@@ -205,6 +205,7 @@ class ASFClient:
         if orbit_type not in self.urls.keys():
             raise ValueError(f"Unknown orbit type: {orbit_type}")
 
+        breakpoint()
         # TODO: Cache the list of EOFs if searched already?
         if self.eof_lists.get(orbit_type) is not None:
             return self.eof_lists[orbit_type]
@@ -212,14 +213,22 @@ class ASFClient:
         elif os.path.exists(self._get_filename_cache_path(orbit_type)):
             eof_list = self._get_cached_filenames(orbit_type)
             # Need to clear it if it's older than what we're looking for
-            if max([e.start_time for e in eof_list]) < max_dt:
+            max_saved = max([e.start_time for e in eof_list])
+            if max_saved < max_dt:
+                logger.warning(f"Clearing cached EOF list, {max_saved} is older than requested {max_dt}")
                 self._clear_cache(orbit_type)
+            else:
+                logger.info("Using cached EOF list")
+                self.eof_lists[orbit_type] = eof_list
+                return eof_list
 
+        logger.info("Downloading all filenames from ASF (may take awhile)")
         resp = requests.get(self.urls.get(orbit_type))
         finder = EOFLinkFinder()
         finder.feed(resp.text)
         eof_list = [SentinelOrbit(f) for f in finder.eof_links]
         self.eof_lists[orbit_type] = eof_list
+        self._write_cached_filenames(orbit_type, eof_list)
         return eof_list
 
     def get_download_urls(self, orbit_dts, missions, orbit_type="precise"):
@@ -245,14 +254,14 @@ class ASFClient:
         for dt, mission in zip(orbit_dts, missions):
             try:
                 filename = lastval_cover(dt, dt, mission_to_eof_list[mission])
-                urls.append(self.url + filename)
+                urls.append(self.urls[orbit_type] + filename)
             except ValidityError:
                 remaining_orbits.append((dt, mission))
 
         if remaining_orbits:
-            _log.warning("The following dates were not found: %s", remaining_orbits)
+            logger.warning("The following dates were not found: %s", remaining_orbits)
             if orbit_type == "precise":
-                _log.warning(
+                logger.warning(
                     "Attempting to download the restituted orbits for these dates."
                 )
                 remaining_dts, remaining_missions = zip(*remaining_orbits)
@@ -269,8 +278,15 @@ class ASFClient:
         filepath = self._get_filename_cache_path(orbit_type)
         if os.path.exists(filepath):
             with open(filepath, "r") as f:
-                return [SentinelOrbit(f) for f in f.readlines()]
+                return [SentinelOrbit(f) for f in f.read().splitlines()]
         return None
+
+    def _write_cached_filenames(self, orbit_type="precise", eof_list=[]):
+        """Cache the ASF orbit files."""
+        filepath = self._get_filename_cache_path(orbit_type)
+        with open(filepath, "w") as f:
+            for e in eof_list:
+                f.write(e.filename + "\n")
 
     def _clear_cache(self, orbit_type="precise"):
         """Clear the cache for the ASF orbit files."""
