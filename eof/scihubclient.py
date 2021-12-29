@@ -1,5 +1,6 @@
 """sentinelsat based client to get orbit files form scihub.copernicu.eu."""
 
+import os
 import logging
 import requests
 import datetime
@@ -89,8 +90,8 @@ class ScihubGnssClient:
             product = S1Product(product)
 
         return self.query_orbit_by_dt(
-            [product.mission],
             [product.start_time],
+            [product.mission],
             orbit_type=orbit_type,
             t0_margin=t0_margin,
             t1_margin=t1_margin,
@@ -98,8 +99,8 @@ class ScihubGnssClient:
 
     def query_orbit_by_dt(
         self,
-        missions,
         orbit_dts,
+        missions,
         orbit_type: str = "precise",
         t0_margin: datetime.timedelta = T0,
         t1_margin: datetime.timedelta = T1,
@@ -107,8 +108,8 @@ class ScihubGnssClient:
         """Query the Scihub api for product info for the specified missions/orbit_dts.
 
         Args:
-            missions (list[str]): list of mission names
             orbit_dts (list[datetime.datetime]): list of orbit datetimes
+            missions (list[str]): list of mission names
             orbit_type (str, optional): Type of orbit to prefer in search. Defaults to "precise".
             t0_margin (datetime.timedelta, optional): Margin used in searching for early bound
                 for orbit.  Defaults to 1 day.
@@ -120,7 +121,7 @@ class ScihubGnssClient:
         """
         remaining_dates = []
         query = {}
-        for mission, dt in zip(missions, orbit_dts):
+        for dt, mission in zip(orbit_dts, missions):
             found_result = False
             # Only check for previse orbits if that is what we want
             if orbit_type == "precise":
@@ -192,16 +193,102 @@ class ScihubGnssClient:
 
 
 class ASFClient:
-    url = "https://s1qc.asf.alaska.edu/aux_poeorb/"
+    precise_url = "https://s1qc.asf.alaska.edu/aux_poeorb/"
+    res_url = "https://s1qc.asf.alaska.edu/aux_resorb/"
+    eof_lists = {"precise": None, "restituted": None}
+    urls = {"precise": precise_url, "restituted": res_url}
 
-    def get_eof_list(self, dt):
+    def get_full_eof_list(self, orbit_type="precise", max_dt=None):
+        """Get the list of orbit files from the ASF server."""
         from .parsing import EOFLinkFinder
 
-        resp = requests.get(self.url)
+        if orbit_type not in self.urls.keys():
+            raise ValueError(f"Unknown orbit type: {orbit_type}")
+
+        # TODO: Cache the list of EOFs if searched already?
+        if self.eof_lists.get(orbit_type) is not None:
+            return self.eof_lists[orbit_type]
+        # Try to see if we have the list of EOFs in the cache
+        elif os.path.exists(self._get_filename_cache_path(orbit_type)):
+            eof_list = self._get_cached_filenames(orbit_type)
+            # Need to clear it if it's older than what we're looking for
+            if max([e.start_time for e in eof_list]) < max_dt:
+                self._clear_cache(orbit_type)
+
+        resp = requests.get(self.urls.get(orbit_type))
         finder = EOFLinkFinder()
         finder.feed(resp.text)
-        return [SentinelOrbit(f) for f in finder.eof_links]
+        eof_list = [SentinelOrbit(f) for f in finder.eof_links]
+        self.eof_lists[orbit_type] = eof_list
+        return eof_list
 
-    def get_download_url(self, dt):
-        filename = lastval_cover(dt, dt, self.get_eof_list(dt))
-        return self.url + filename
+    def get_download_urls(self, orbit_dts, missions, orbit_type="precise"):
+        """Find the URL for an orbit file covering the specified datetime
+
+        Args:
+            dt (datetime): requested
+        Args:
+            orbit_dts (list[str] or list[datetime.datetime]): datetime for orbit coverage
+            missions (list[str]): specify S1A or S1B
+
+        Returns:
+            str: URL for the orbit file
+        """
+        eof_list = self.get_full_eof_list(orbit_type=orbit_type, max_dt=max(orbit_dts))
+        # Split up for quicker parsing of the latest one
+        mission_to_eof_list = {
+            "S1A": [eof for eof in eof_list if eof.mission == "S1A"],
+            "S1B": [eof for eof in eof_list if eof.mission == "S1B"],
+        }
+        remaining_orbits = []
+        urls = []
+        for dt, mission in zip(orbit_dts, missions):
+            try:
+                filename = lastval_cover(dt, dt, mission_to_eof_list[mission])
+                urls.append(self.url + filename)
+            except ValidityError:
+                remaining_orbits.append((dt, mission))
+
+        if remaining_orbits:
+            _log.warning("The following dates were not found: %s", remaining_orbits)
+            if orbit_type == "precise":
+                _log.warning(
+                    "Attempting to download the restituted orbits for these dates."
+                )
+                remaining_dts, remaining_missions = zip(*remaining_orbits)
+                urls.extend(
+                    self.get_download_urls(
+                        remaining_dts, remaining_missions, orbit_type="restituted"
+                    )
+                )
+
+        return urls
+
+    def _get_cached_filenames(self, orbit_type="precise"):
+        """Get the cache path for the ASF orbit files."""
+        filepath = self._get_filename_cache_path(orbit_type)
+        if os.path.exists(filepath):
+            with open(filepath, "r") as f:
+                return [SentinelOrbit(f) for f in f.readlines()]
+        return None
+
+    def _clear_cache(self, orbit_type="precise"):
+        """Clear the cache for the ASF orbit files."""
+        filepath = self._get_filename_cache_path(orbit_type)
+        os.remove(filepath)
+
+    @staticmethod
+    def _get_filename_cache_path(orbit_type="precise"):
+        fname = f"{orbit_type.lower()}_filenames.txt"
+        return os.path.join(ASFClient.get_cache_dir(), fname)
+
+    @staticmethod
+    def get_cache_dir():
+        """Find location of directory to store .hgt downloads
+        Assuming linux, uses ~/.cache/sardem/
+        """
+        path = os.getenv("XDG_CACHE_HOME", os.path.expanduser("~/.cache"))
+        path = os.path.join(path, "sentineleof")  # Make subfolder for our downloads
+        if not os.path.exists(path):
+            os.makedirs(path)
+        return path

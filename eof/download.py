@@ -76,8 +76,7 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
     dates_remain = False
     client = ScihubGnssClient()
     # First, check that Scihub isn't having issues
-    scihub_is_up = client()
-    use_scihub = use_scihub and scihub_is_up
+    use_scihub = use_scihub and client.server_is_up()
 
     if use_scihub:
         # try to search on scihub
