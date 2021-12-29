@@ -28,8 +28,8 @@ def lastval_cover(
     ]
     if not candidates:
         raise ValidityError(
-            f"none of the input products completely covers the requested "
-            f"time interval: [t0={t0}, t1={t1}]"
+            "none of the input products completely covers the requested "
+            "time interval: [t0={}, t1={}]".format(t0, t1)
         )
 
     candidates.sort(key=operator.attrgetter("created_time"), reverse=True)
@@ -205,7 +205,7 @@ class ASFClient:
         from .parsing import EOFLinkFinder
 
         if orbit_type not in self.urls.keys():
-            raise ValueError(f"Unknown orbit type: {orbit_type}")
+            raise ValueError("Unknown orbit type: {}".format(orbit_type))
 
         if self.eof_lists.get(orbit_type) is not None:
             return self.eof_lists[orbit_type]
@@ -215,8 +215,8 @@ class ASFClient:
             # Need to clear it if it's older than what we're looking for
             max_saved = max([e.start_time for e in eof_list])
             if max_saved < max_dt:
-                logger.warning(f"Clearing cached {orbit_type} EOF list:")
-                logger.warning(f"{max_saved} is older than requested {max_dt}")
+                logger.warning("Clearing cached {} EOF list:".format(orbit_type))
+                logger.warning("{} is older than requested {}".format(max_saved, max_dt))
                 self._clear_cache(orbit_type)
             else:
                 logger.info("Using cached EOF list")
@@ -296,7 +296,7 @@ class ASFClient:
 
     @staticmethod
     def _get_filename_cache_path(orbit_type="precise"):
-        fname = f"{orbit_type.lower()}_filenames.txt"
+        fname = "{}_filenames.txt".format(orbit_type.lower())
         return os.path.join(ASFClient.get_cache_dir(), fname)
 
     @staticmethod
