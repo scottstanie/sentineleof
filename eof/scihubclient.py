@@ -128,11 +128,10 @@ class ScihubGnssClient:
                     mission,
                     product_type="AUX_POEORB",
                 )
-                result = (
-                    self._select_orbit(products, dt, dt + datetime.timedelta(minutes=1))
-                    if products
-                    else None
-                )
+                try:
+                    result = self._select_orbit(products, dt, dt + datetime.timedelta(minutes=1))
+                except ValidityError:
+                    result = None
             else:
                 result = None
 

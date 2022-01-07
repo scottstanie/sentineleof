@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="sentineleof",
-    version="0.6.3",
+    version="0.6.4",
     author="Scott Staniewicz",
     author_email="scott.stanie@utexas.com",
     description="Download precise orbit files for Sentinel 1 products",
