@@ -1,5 +1,5 @@
 """Module for parsing the orbit state vectors (OSVs) from the .EOF file"""
-from datetime import datetime
+from datetime import datetime, timezone
 from xml.etree import ElementTree
 from html.parser import HTMLParser
 from .log import logger
@@ -56,6 +56,8 @@ def parse_orbit(
     extra_osvs=1,
 ):
 
+    min_time = to_datetime(min_time)
+    max_time = to_datetime(max_time)
     logger.info(
         "parsing OSVs from %s between %s and %s",
         eof_filename,
@@ -68,7 +70,7 @@ def parse_orbit(
     idxs_in_range = []
     for idx, osv in enumerate(root.findall("./Data_Block/List_of_OSVs/OSV")):
         all_osvs.append(osv)
-        utc_dt = _convert_osv_field(osv, "UTC", parse_utc_string)
+        utc_dt = to_datetime(_convert_osv_field(osv, "UTC", parse_utc_string))
         if utc_dt >= min_time and utc_dt <= max_time:
             idxs_in_range.append(idx)
 
@@ -110,3 +112,21 @@ def write_orbinfo(orbit_tuples, outname="out.orbtiming"):
         for tup in orbit_tuples:
             # final 0.0 0.0 0.0 is ax, ax, az accelerations
             f.write(" ".join(map(str, tup)) + " 0.0 0.0 0.0\n")
+
+
+def to_datetime(dates, tzinfo=timezone.utc):
+    """Convert a single (or list of) `datetime.date` to timezone-aware `datetime.datetime`"""
+    if isinstance(dates, datetime):
+        return datetime(*dates.timetuple()[:6], tzinfo=tzinfo)
+    try:
+        iter(dates)
+        if len(dates) == 0:
+            return dates
+        try:  # Check if its a list of tuples (an ifglist)
+            iter(dates[0])
+            return [to_datetime(tup) for tup in dates]
+        except TypeError:
+            return [datetime(*d.timetuple()[:6], tzinfo=tzinfo) for d in dates]
+    # Or if it's just one sigle date
+    except TypeError:
+        return datetime(*dates.timetuple()[:6], tzinfo=tzinfo)
