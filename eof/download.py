@@ -65,7 +65,7 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
     if not missions:
         missions = itertools.repeat(None)
 
-    # First make sures all are datetimes if given string
+    # First make sure all are datetimes if given string
     orbit_dts = [parse(dt) if isinstance(dt, str) else dt for dt in orbit_dts]
 
     filenames = []
@@ -216,15 +216,15 @@ def main(search_path=".", save_dir=",", sentinel_file=None, mission=None, date=N
         logger.info("Creating directory for output: %s", save_dir)
         os.mkdir(save_dir)
 
-    if (mission and not date) or (date and not mission):
-        raise ValueError("Must specify date and mission together")
+    if (mission and not date):
+        raise ValueError("Must specify date if providing mission.")
 
     if sentinel_file:
         # Handle parsing in download_eof
         orbit_dts, missions = None, None
     elif date:
-        orbit_dts = [date]
-        missions = [mission]
+        missions = [mission] if mission else ["S1A", "S1B"]
+        orbit_dts = [date] * len(missions)
     else:
         # No command line args given: search current directory
         orbit_dts, missions = find_scenes_to_download(

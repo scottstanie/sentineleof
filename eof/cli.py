@@ -28,19 +28,26 @@ from eof import log
     help="Specify path to download only 1 .EOF for a Sentinel-1 file/folder",
     show_default=True,
 )
-@click.option("--date", "-d", help="Validity date for EOF to download")
+@click.option(
+    "--date",
+    "-d",
+    help="Alternative to specifying Sentinel products: choose date to download for.",
+)
 @click.option(
     "--mission",
     "-m",
     type=click.Choice(["S1A", "S1B"]),
-    help="Optionally specify Sentinel satellite to download (default: gets both S1A and S1B)",
+    help=(
+        "If using `--date`, optionally specify Sentinel satellite to download"
+        " (default: gets both S1A and S1B)"
+    ),
 )
 @click.option(
     "--orbit-type",
     type=click.Choice(["precise", "restituted"]),
     default="precise",
     help="Optionally specify the type of orbit file to get "
-         "(default: precise (POEORB), but fallback to restituted (RESORB))",
+    "(default: precise (POEORB), but fallback to restituted (RESORB))",
 )
 def cli(search_path, save_dir, sentinel_file, date, mission, orbit_type):
     """Download Sentinel precise orbit files.
