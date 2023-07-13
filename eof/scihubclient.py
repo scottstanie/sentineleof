@@ -21,7 +21,10 @@ class ValidityError(ValueError):
 
 
 def lastval_cover(
-    t0: datetime.datetime, t1: datetime.datetime, data: Sequence[SentinelOrbit]
+    t0: datetime.datetime,
+    t1: datetime.datetime,
+    data: Sequence[SentinelOrbit],
+    margin: datetime.timedelta = datetime.timedelta(minutes=5),
 ) -> str:
     candidates = [
         item for item in data if item.start_time <= t0 and item.stop_time >= t1
@@ -45,8 +48,13 @@ class ScihubGnssClient:
     T0 = datetime.timedelta(days=1)
     T1 = datetime.timedelta(days=1)
 
-    def __init__(self, user: str = "gnssguest", password: str = "gnssguest",
-                 api_url: str = "https://scihub.copernicus.eu/gnss/", **kwargs):
+    def __init__(
+        self,
+        user: str = "gnssguest",
+        password: str = "gnssguest",
+        api_url: str = "https://scihub.copernicus.eu/gnss/",
+        **kwargs
+    ):
         self._api = SentinelAPI(user=user, password=password, api_url=api_url, **kwargs)
 
     def query_orbit(self, t0, t1, satellite_id: str, product_type: str = "AUX_POEORB"):
@@ -129,7 +137,9 @@ class ScihubGnssClient:
                     product_type="AUX_POEORB",
                 )
                 try:
-                    result = self._select_orbit(products, dt, dt + datetime.timedelta(minutes=1))
+                    result = self._select_orbit(
+                        products, dt, dt + datetime.timedelta(minutes=1)
+                    )
                 except ValidityError:
                     result = None
             else:
@@ -210,7 +220,9 @@ class ASFClient:
             max_saved = max([e.start_time for e in eof_list])
             if max_saved < max_dt:
                 logger.warning("Clearing cached {} EOF list:".format(orbit_type))
-                logger.warning("{} is older than requested {}".format(max_saved, max_dt))
+                logger.warning(
+                    "{} is older than requested {}".format(max_saved, max_dt)
+                )
                 self._clear_cache(orbit_type)
             else:
                 logger.info("Using cached EOF list")
