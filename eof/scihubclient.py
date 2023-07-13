@@ -27,7 +27,9 @@ def lastval_cover(
     margin: datetime.timedelta = datetime.timedelta(minutes=5),
 ) -> str:
     candidates = [
-        item for item in data if item.start_time <= t0 and item.stop_time >= t1
+        item
+        for item in data
+        if item.start_time <= (t0 - margin) and item.stop_time >= (t1 + margin)
     ]
     if not candidates:
         raise ValidityError(
