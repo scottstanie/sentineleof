@@ -81,7 +81,7 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
             query = client.query_orbit_by_dt(orbit_dts, missions, orbit_type=orbit_type)
 
         if query:
-            print("Attempting download from SciHub")
+            logger.info("Attempting download from SciHub")
             result = client.download_all(query, directory_path=save_dir)
             filenames.extend(
                 item['path'] for item in result.downloaded.values()
