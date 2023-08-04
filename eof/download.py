@@ -124,7 +124,6 @@ def _download_and_write(url, save_dir=".", asf_user="", asf_password=""):
     Returns:
         list[str]: Filenames to which the orbit files have been saved
     """
-        
     fname = os.path.join(save_dir, url.split("/")[-1])
     if os.path.isfile(fname):
         logger.info("%s already exists, skipping download.", url)
