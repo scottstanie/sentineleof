@@ -97,7 +97,9 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
         # Download and save all links in parallel
         pool = ThreadPool(processes=MAX_WORKERS)
         result_url_dict = {
-            pool.apply_async(_download_and_write, args=[url, save_dir, user, password]): url
+            pool.apply_async(
+                _download_and_write, args=[url, save_dir, asf_user, asf_password]
+            ): url
             for url in urls
         }
 
