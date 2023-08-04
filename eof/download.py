@@ -90,7 +90,6 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
 
     # For failures from scihub, try ASF
     if not scihub_successful:
-        print("Attempting download from ASF")
         logger.warning("Scihub failed, trying ASF")
         asfclient = ASFClient()
         urls = asfclient.get_download_urls(orbit_dts, missions, orbit_type=orbit_type)
