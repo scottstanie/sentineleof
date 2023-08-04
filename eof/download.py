@@ -132,7 +132,7 @@ def _download_and_write(url, save_dir=".", asf_user="", asf_password=""):
     logger.info("Downloading %s", url)
     # Fix URL
     if 's1qc.asf.alaska.edu' in url:
-        url='https://urs.earthdata.nasa.gov/oauth/authorize?response_type=code&client_id=BO_n7nTIlMljdvU6kRRB3g&redirect_uri=https://auth.asf.alaska.edu/login&state='+url+'&app_type=401'
+        url = 'https://urs.earthdata.nasa.gov/oauth/authorize?response_type=code&client_id=BO_n7nTIlMljdvU6kRRB3g&redirect_uri=https://auth.asf.alaska.edu/login&state='+url+'&app_type=401'
     # Add credentials
     response = requests.get(url, auth=(asf_user, asf_password))
     response.raise_for_status()
