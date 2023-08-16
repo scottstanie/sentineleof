@@ -147,11 +147,7 @@ class ScihubGnssClient:
                     product_type="AUX_POEORB",
                 )
                 try:
-                    result = self._select_orbit(
-                        products,
-                        dt,
-                        dt + timedelta(minutes=1),
-                    )
+                    result = self._select_orbit(products, dt, dt + timedelta(minutes=1))
                 except ValidityError:
                     result = None
             else:

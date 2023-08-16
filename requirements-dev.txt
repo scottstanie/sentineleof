@@ -1,9 +1,7 @@
-nose
+pytest
 cython
 twine
 coveralls
-responses
-mock
 sphinx
 m2r
 sphinx_rtd_theme
