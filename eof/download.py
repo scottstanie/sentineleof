@@ -35,8 +35,16 @@ from .log import logger
 MAX_WORKERS = 6  # workers to download in parallel (for ASF backup)
 
 
-def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".",
-                  orbit_type="precise", force_asf=False, asf_user="", asf_password=""):
+def download_eofs(
+    orbit_dts=None,
+    missions=None,
+    sentinel_file=None,
+    save_dir=".",
+    orbit_type="precise",
+    force_asf=False,
+    asf_user="",
+    asf_password="",
+):
     """Downloads and saves EOF files for specific dates
 
     Args:
@@ -83,9 +91,7 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
         if query:
             logger.info("Attempting download from SciHub")
             result = client.download_all(query, directory_path=save_dir)
-            filenames.extend(
-                item['path'] for item in result.downloaded.values()
-            )
+            filenames.extend(item["path"] for item in result.downloaded.values())
             scihub_successful = True
 
     # For failures from scihub, try ASF
@@ -130,8 +136,12 @@ def _download_and_write(url, save_dir=".", asf_user="", asf_password=""):
 
     logger.info("Downloading %s", url)
     # Fix URL
-    if 's1qc.asf.alaska.edu' in url:
-        url = 'https://urs.earthdata.nasa.gov/oauth/authorize?response_type=code&client_id=BO_n7nTIlMljdvU6kRRB3g&redirect_uri=https://auth.asf.alaska.edu/login&state='+url+'&app_type=401'
+    if "s1qc.asf.alaska.edu" in url:
+        url = (
+            "https://urs.earthdata.nasa.gov/oauth/authorize?response_type=code&client_id=BO_n7nTIlMljdvU6kRRB3g&redirect_uri=https://auth.asf.alaska.edu/login&state="
+            + url
+            + "&app_type=401"
+        )
     # Add credentials
     response = requests.get(url, auth=(asf_user, asf_password))
     response.raise_for_status()
@@ -216,14 +226,24 @@ def find_scenes_to_download(search_path="./", save_dir="./"):
     return orbit_dts, missions
 
 
-def main(search_path=".", save_dir=",", sentinel_file=None, mission=None, date=None, orbit_type="precise", force_asf=False, asf_user="", asf_password=""):
+def main(
+    search_path=".",
+    save_dir=",",
+    sentinel_file=None,
+    mission=None,
+    date=None,
+    orbit_type="precise",
+    force_asf=False,
+    asf_user="",
+    asf_password="",
+):
     """Function used for entry point to download eofs"""
 
     if not os.path.exists(save_dir):
         logger.info("Creating directory for output: %s", save_dir)
         os.mkdir(save_dir)
 
-    if (mission and not date):
+    if mission and not date:
         raise ValueError("Must specify date if providing mission.")
 
     if sentinel_file:
@@ -251,5 +271,5 @@ def main(search_path=".", save_dir=",", sentinel_file=None, mission=None, date=N
         orbit_type=orbit_type,
         force_asf=force_asf,
         asf_user=asf_user,
-        asf_password=asf_password
+        asf_password=asf_password,
     )
