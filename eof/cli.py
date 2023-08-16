@@ -2,8 +2,8 @@
 CLI tool for downloading Sentinel 1 EOF files
 """
 import click
-from eof import download
-from eof import log
+
+from eof import download, log
 
 
 @click.command()

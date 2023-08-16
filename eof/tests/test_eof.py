@@ -160,4 +160,7 @@ class TestEOF(unittest.TestCase):
             sentinel_file=None,
             save_dir=",",
             orbit_type="precise",
+            force_asf=False,
+            asf_user="",
+            asf_password="",
         )
