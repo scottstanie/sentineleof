@@ -35,8 +35,16 @@ from .log import logger
 MAX_WORKERS = 6  # workers to download in parallel (for ASF backup)
 
 
-def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".",
-                  orbit_type="precise"):
+def download_eofs(
+    orbit_dts=None,
+    missions=None,
+    sentinel_file=None,
+    save_dir=".",
+    orbit_type="precise",
+    force_asf=False,
+    asf_user="",
+    asf_password="",
+):
     """Downloads and saves EOF files for specific dates
 
     Args:
@@ -73,7 +81,7 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
     client = ScihubGnssClient()
 
     # First, check that Scihub isn't having issues
-    if client.server_is_up():
+    if client.server_is_up() and not force_asf:
         # try to search on scihub
         if sentinel_file:
             query = client.query_orbit_for_product(sentinel_file, orbit_type=orbit_type)
@@ -81,10 +89,9 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
             query = client.query_orbit_by_dt(orbit_dts, missions, orbit_type=orbit_type)
 
         if query:
+            logger.info("Attempting download from SciHub")
             result = client.download_all(query, directory_path=save_dir)
-            filenames.extend(
-                item['path'] for item in result.downloaded.values()
-            )
+            filenames.extend(item["path"] for item in result.downloaded.values())
             scihub_successful = True
 
     # For failures from scihub, try ASF
@@ -95,7 +102,9 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
         # Download and save all links in parallel
         pool = ThreadPool(processes=MAX_WORKERS)
         result_url_dict = {
-            pool.apply_async(_download_and_write, (url,)): url
+            pool.apply_async(
+                _download_and_write, args=[url, save_dir, asf_user, asf_password]
+            ): url
             for url in urls
         }
 
@@ -110,7 +119,7 @@ def download_eofs(orbit_dts=None, missions=None, sentinel_file=None, save_dir=".
     return filenames
 
 
-def _download_and_write(url, save_dir="."):
+def _download_and_write(url, save_dir=".", asf_user="", asf_password=""):
     """Wrapper function to run the link downloading in parallel
 
     Args:
@@ -126,7 +135,15 @@ def _download_and_write(url, save_dir="."):
         return [fname]
 
     logger.info("Downloading %s", url)
-    response = requests.get(url)
+    # Fix URL
+    if "s1qc.asf.alaska.edu" in url:
+        url = (
+            "https://urs.earthdata.nasa.gov/oauth/authorize?response_type=code&client_id=BO_n7nTIlMljdvU6kRRB3g&redirect_uri=https://auth.asf.alaska.edu/login&state="
+            + url
+            + "&app_type=401"
+        )
+    # Add credentials
+    response = requests.get(url, auth=(asf_user, asf_password))
     response.raise_for_status()
     logger.info("Saving to %s", fname)
     with open(fname, "wb") as f:
@@ -209,14 +226,24 @@ def find_scenes_to_download(search_path="./", save_dir="./"):
     return orbit_dts, missions
 
 
-def main(search_path=".", save_dir=",", sentinel_file=None, mission=None, date=None, orbit_type="precise"):
+def main(
+    search_path=".",
+    save_dir=",",
+    sentinel_file=None,
+    mission=None,
+    date=None,
+    orbit_type="precise",
+    force_asf=False,
+    asf_user="",
+    asf_password="",
+):
     """Function used for entry point to download eofs"""
 
     if not os.path.exists(save_dir):
         logger.info("Creating directory for output: %s", save_dir)
         os.mkdir(save_dir)
 
-    if (mission and not date):
+    if mission and not date:
         raise ValueError("Must specify date if providing mission.")
 
     if sentinel_file:
@@ -242,4 +269,7 @@ def main(search_path=".", save_dir=",", sentinel_file=None, mission=None, date=N
         sentinel_file=sentinel_file,
         save_dir=save_dir,
         orbit_type=orbit_type,
+        force_asf=force_asf,
+        asf_user=asf_user,
+        asf_password=asf_password,
     )
