@@ -1,19 +1,21 @@
 """sentinelsat based client to get orbit files form scihub.copernicu.eu."""
+from __future__ import annotations
 
-import os
-import logging
-import requests
-import datetime
 import operator
+import os
+from datetime import datetime, timedelta
 from typing import Sequence
 
-from .products import SentinelOrbit, Sentinel as S1Product
-
+import requests
 from sentinelsat import SentinelAPI
 from sentinelsat.exceptions import ServerError
 
-# logger = logging.getLogger(__name__)
 from .log import logger
+from .products import Sentinel as S1Product
+from .products import SentinelOrbit
+
+T_ORBIT = (12 * 86400.0) / 175.0
+"""Orbital period of Sentinel-1 in seconds"""
 
 
 class ValidityError(ValueError):
@@ -21,15 +23,18 @@ class ValidityError(ValueError):
 
 
 def lastval_cover(
-    t0: datetime.datetime,
-    t1: datetime.datetime,
+    t0: datetime,
+    t1: datetime,
     data: Sequence[SentinelOrbit],
-    margin: datetime.timedelta = datetime.timedelta(minutes=5),
 ) -> str:
+    # Using a start margin of > 1 orbit so that the start of the orbit file will
+    # cover the ascending node crossing of the acquisition
+    margin0 = timedelta(seconds=T_ORBIT + 60)
+    margin1 = timedelta(minutes=5)
     candidates = [
         item
         for item in data
-        if item.start_time <= (t0 - margin) and item.stop_time >= (t1 + margin)
+        if item.start_time <= (t0 - margin0) and item.stop_time >= (t1 + margin1)
     ]
     if not candidates:
         raise ValidityError(
@@ -47,19 +52,21 @@ class OrbitSelectionError(RuntimeError):
 
 
 class ScihubGnssClient:
-    T0 = datetime.timedelta(days=1)
-    T1 = datetime.timedelta(days=1)
+    T0 = timedelta(days=1)
+    T1 = timedelta(days=1)
 
     def __init__(
         self,
         user: str = "gnssguest",
         password: str = "gnssguest",
         api_url: str = "https://scihub.copernicus.eu/gnss/",
-        **kwargs
+        **kwargs,
     ):
         self._api = SentinelAPI(user=user, password=password, api_url=api_url, **kwargs)
 
-    def query_orbit(self, t0, t1, satellite_id: str, product_type: str = "AUX_POEORB"):
+    def query_orbit(
+        self, t0, t1, satellite_id: str, product_type: str = "AUX_POEORB"
+    ) -> dict[str, dict]:
         assert satellite_id in {"S1A", "S1B"}
         assert product_type in {"AUX_POEORB", "AUX_RESORB"}
 
@@ -78,7 +85,7 @@ class ScihubGnssClient:
         return products
 
     @staticmethod
-    def _select_orbit(products, t0, t1):
+    def _select_orbit(products: dict[str, dict], t0: datetime, t1: datetime):
         if not products:
             return {}
         orbit_products = [p["identifier"] for p in products.values()]
@@ -90,8 +97,8 @@ class ScihubGnssClient:
         self,
         product,
         orbit_type: str = "precise",
-        t0_margin: datetime.timedelta = T0,
-        t1_margin: datetime.timedelta = T1,
+        t0_margin: timedelta = T0,
+        t1_margin: timedelta = T1,
     ):
         if isinstance(product, str):
             product = S1Product(product)
@@ -109,18 +116,19 @@ class ScihubGnssClient:
         orbit_dts,
         missions,
         orbit_type: str = "precise",
-        t0_margin: datetime.timedelta = T0,
-        t1_margin: datetime.timedelta = T1,
+        t0_margin: timedelta = T0,
+        t1_margin: timedelta = T1,
     ):
         """Query the Scihub api for product info for the specified missions/orbit_dts.
 
         Args:
-            orbit_dts (list[datetime.datetime]): list of orbit datetimes
+            orbit_dts (list[datetime]): list of orbit datetimes
             missions (list[str]): list of mission names
-            orbit_type (str, optional): Type of orbit to prefer in search. Defaults to "precise".
-            t0_margin (datetime.timedelta, optional): Margin used in searching for early bound
+            orbit_type (str, optional): Type of orbit to prefer in search.
+                Defaults to "precise".
+            t0_margin (timedelta, optional): Margin used in searching for early bound
                 for orbit.  Defaults to 1 day.
-            t1_margin (datetime.timedelta, optional): Margin used in searching for late bound
+            t1_margin (timedelta, optional): Margin used in searching for late bound
                 for orbit.  Defaults to 1 day.
 
         Returns:
@@ -130,7 +138,7 @@ class ScihubGnssClient:
         query = {}
         for dt, mission in zip(orbit_dts, missions):
             found_result = False
-            # Only check for previse orbits if that is what we want
+            # Only check for precise orbits if that is what we want
             if orbit_type == "precise":
                 products = self.query_orbit(
                     dt - t0_margin,
@@ -139,9 +147,7 @@ class ScihubGnssClient:
                     product_type="AUX_POEORB",
                 )
                 try:
-                    result = self._select_orbit(
-                        products, dt, dt + datetime.timedelta(minutes=1)
-                    )
+                    result = self._select_orbit(products, dt, dt + timedelta(minutes=1))
                 except ValidityError:
                     result = None
             else:
@@ -153,13 +159,18 @@ class ScihubGnssClient:
             else:
                 # try with RESORB
                 products = self.query_orbit(
-                    dt - datetime.timedelta(hours=1),
-                    dt + datetime.timedelta(hours=1),
+                    dt - timedelta(hours=2),
+                    dt + timedelta(hours=2),
                     mission,
                     product_type="AUX_RESORB",
                 )
                 result = (
-                    self._select_orbit(products, dt, dt + datetime.timedelta(minutes=1))
+                    self._select_orbit(
+                        products,
+                        dt,
+                        dt + timedelta(minutes=1),
+                        orbit_type=orbit_type,
+                    )
                     if products
                     else None
                 )
@@ -246,7 +257,7 @@ class ASFClient:
         Args:
             dt (datetime): requested
         Args:
-            orbit_dts (list[str] or list[datetime.datetime]): datetime for orbit coverage
+            orbit_dts (list[str] or list[datetime]): datetime for orbit coverage
             missions (list[str]): specify S1A or S1B
 
         Returns:
@@ -310,7 +321,7 @@ class ASFClient:
     @staticmethod
     def get_cache_dir():
         """Find location of directory to store .hgt downloads
-        Assuming linux, uses ~/.cache/sardem/
+        Assuming linux, uses ~/.cache/sentineleof/
         """
         path = os.getenv("XDG_CACHE_HOME", os.path.expanduser("~/.cache"))
         path = os.path.join(path, "sentineleof")  # Make subfolder for our downloads

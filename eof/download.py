@@ -261,7 +261,7 @@ def main(
             logger.info(
                 "No Sentinel products found in directory %s, exiting", search_path
             )
-            return 0
+            return []
 
     return download_eofs(
         orbit_dts=orbit_dts,
