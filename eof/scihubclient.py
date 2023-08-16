@@ -1,19 +1,17 @@
 """sentinelsat based client to get orbit files form scihub.copernicu.eu."""
 
-import os
-import logging
-import requests
 import datetime
 import operator
+import os
 from typing import Sequence
 
-from .products import SentinelOrbit, Sentinel as S1Product
-
+import requests
 from sentinelsat import SentinelAPI
 from sentinelsat.exceptions import ServerError
 
-# logger = logging.getLogger(__name__)
 from .log import logger
+from .products import Sentinel as S1Product
+from .products import SentinelOrbit
 
 
 class ValidityError(ValueError):
