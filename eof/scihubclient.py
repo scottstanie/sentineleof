@@ -169,7 +169,6 @@ class ScihubGnssClient:
                         products,
                         dt,
                         dt + timedelta(minutes=1),
-                        orbit_type=orbit_type,
                     )
                     if products
                     else None
