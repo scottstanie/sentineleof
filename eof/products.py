@@ -71,23 +71,26 @@ class Base(object):
         if not self.FILE_REGEX:
             raise NotImplementedError("Must define class FILE_REGEX to parse")
 
-        match = re.search(self.FILE_REGEX, self.filename)
+        match = re.search(self.FILE_REGEX, str(self.filename))
         if not match:
             raise ValueError(
                 "Invalid {} filename: {}".format(self.__class__.__name__, self.filename)
             )
         else:
-            return match.groups()
+            return match.groupdict()
 
     @property
     def field_meanings(self):
         """List the fields returned by full_parse()"""
-        return self._FIELD_MEANINGS
+        return self.full_parse().keys()
 
     def _get_field(self, fieldname):
         """Pick a specific field based on its name"""
-        idx = self.field_meanings.index(fieldname)
-        return self.full_parse()[idx]
+        return self.full_parse()[fieldname]
+
+    def __getitem__(self, item):
+        """Access properties with uavsar[item] syntax"""
+        return self._get_field(item)
 
 
 class Sentinel(Base):
@@ -125,21 +128,20 @@ class Sentinel(Base):
         filename (str) name of the sentinel data product
     """
 
-    FILE_REGEX = r"(S1A|S1B)_([\w\d]{2})_([\w_]{3})([FHM_])_([012])S([SDHV]{2})_([T\d]{15})_([T\d]{15})_(\d{6})_([\d\w]{6})_([\d\w]{4})"
-    TIME_FMT = "%Y%m%dT%H%M%S"
-    _FIELD_MEANINGS = (
-        "mission",
-        "beam",
-        "product type",
-        "resolution class",
-        "product level",
-        "polarization",
-        "start datetime",
-        "stop datetime",
-        "orbit number",
-        "data-take identified",
-        "product unique id",
+    FILE_REGEX = re.compile(
+        r"(?P<mission>S1A|S1B)_"
+        r"(?P<beam>[\w\d]{2})_"
+        r"(?P<product_type>[\w_]{3})"
+        r"(?P<resolution_class>[FHM_])_"
+        r"(?P<product_level>[012])S"
+        r"(?P<polarization>[SDHV]{2})_"
+        r"(?P<start_datetime>[T\d]{15})_"
+        r"(?P<stop_datetime>[T\d]{15})_"
+        r"(?P<orbit_number>\d{6})_"
+        r"(?P<datetake_identifier>[\d\w]{6})_"
+        r"(?P<unique_id>[\d\w]{4})"
     )
+    TIME_FMT = "%Y%m%dT%H%M%S"
 
     def __init__(self, filename, **kwargs):
         super(Sentinel, self).__init__(filename, **kwargs)
@@ -170,7 +172,7 @@ class Sentinel(Base):
             >>> print(s.start_time)
             2018-04-08 04:30:25
         """
-        start_time_str = self._get_field("start datetime")
+        start_time_str = self._get_field("start_datetime")
         return datetime.strptime(start_time_str, self.TIME_FMT)
 
     @property
@@ -182,7 +184,7 @@ class Sentinel(Base):
             >>> print(s.stop_time)
             2018-04-08 04:30:53
         """
-        stop_time_str = self._get_field("stop datetime")
+        stop_time_str = self._get_field("stop_datetime")
         return datetime.strptime(stop_time_str, self.TIME_FMT)
 
     @property
@@ -205,7 +207,7 @@ class Sentinel(Base):
             >>> print(s.product_type)
             SLC
         """
-        return self._get_field("product type")
+        return self._get_field("product_type")
 
     @property
     def level(self):
@@ -232,7 +234,7 @@ class Sentinel(Base):
             >>> print(s.absolute_orbit)
             21371
         """
-        return int(self._get_field("orbit number"))
+        return int(self._get_field("orbit_number"))
 
     @property
     def relative_orbit(self):
@@ -262,7 +264,7 @@ class Sentinel(Base):
     @property
     def product_uid(self):
         """Unique identifier of product (last 4 of filename)"""
-        return self._get_field("product unique id")
+        return self._get_field("unique_id")
 
     @property
     def date(self):
@@ -305,17 +307,13 @@ class SentinelOrbit(Base):
     Attributes:
         filename (str) name of the sentinel data product
     """
-
-    FILE_REGEX = (
-        r"(S1A|S1B)_OPER_AUX_([\w_]{6})_OPOD_([T\d]{15})_V([T\d]{15})_([T\d]{15})"
-    )
     TIME_FMT = "%Y%m%dT%H%M%S"
-    _FIELD_MEANINGS = (
-        "mission",
-        "orbit type",
-        "created datetime",
-        "start datetime",
-        "stop datetime",
+    FILE_REGEX = (
+        r"(?P<mission>S1A|S1B)_OPER_AUX_"
+        r"(?P<orbit_type>[\w_]{6})_OPOD_"
+        r"(?P<created_datetime>[T\d]{15})_"
+        r"V(?P<start_datetime>[T\d]{15})_"
+        r"(?P<stop_datetime>[T\d]{15})"
     )
 
     def __init__(self, filename, **kwargs):
@@ -361,7 +359,7 @@ class SentinelOrbit(Base):
             >>> print(s.start_time)
             2019-12-31 22:59:42
         """
-        start_time_str = self._get_field("start datetime")
+        start_time_str = self._get_field("start_datetime")
         return datetime.strptime(start_time_str, self.TIME_FMT)
 
     @property
@@ -373,7 +371,7 @@ class SentinelOrbit(Base):
             >>> print(s.stop_time)
             2020-01-02 00:59:42
         """
-        stop_time_str = self._get_field("stop datetime")
+        stop_time_str = self._get_field("stop_datetime")
         return datetime.strptime(stop_time_str, self.TIME_FMT)
 
     @property
@@ -385,12 +383,12 @@ class SentinelOrbit(Base):
             >>> print(s.created_time)
             2020-01-21 12:06:54
         """
-        stop_time_str = self._get_field("created datetime")
+        stop_time_str = self._get_field("created_datetime")
         return datetime.strptime(stop_time_str, self.TIME_FMT)
 
     @property
     def orbit_type(self):
-        """Type of orbit file (previse, restituted)
+        """Type of orbit file (e.g precise, restituted)
 
         Example:
         >>> s = SentinelOrbit('S1A_OPER_AUX_POEORB_OPOD_20200121T120654_V20191231T225942_20200102T005942.EOF')
@@ -400,7 +398,7 @@ class SentinelOrbit(Base):
         >>> print(s.orbit_type)
         restituted
         """
-        o = self._get_field("orbit type")
+        o = self._get_field("orbit_type")
         if o == "POEORB":
             return "precise"
         elif o == "RESORB":

@@ -13,6 +13,8 @@ from sentinelsat.exceptions import ServerError
 from .log import logger
 from .products import Sentinel as S1Product
 from .products import SentinelOrbit
+from .parsing import EOFLinkFinder
+
 
 T_ORBIT = (12 * 86400.0) / 175.0
 """Orbital period of Sentinel-1 in seconds"""
@@ -26,11 +28,11 @@ def lastval_cover(
     t0: datetime,
     t1: datetime,
     data: Sequence[SentinelOrbit],
+    margin0=timedelta(seconds=T_ORBIT + 60),
+    margin1=timedelta(minutes=5),
 ) -> str:
     # Using a start margin of > 1 orbit so that the start of the orbit file will
     # cover the ascending node crossing of the acquisition
-    margin0 = timedelta(seconds=T_ORBIT + 60)
-    margin1 = timedelta(minutes=5)
     candidates = [
         item
         for item in data
@@ -85,12 +87,17 @@ class ScihubGnssClient:
         return products
 
     @staticmethod
-    def _select_orbit(products: dict[str, dict], t0: datetime, t1: datetime):
+    def _select_orbit(
+        products: dict[str, dict],
+        t0: datetime,
+        t1: datetime,
+        margin0: timedelta = timedelta(seconds=T_ORBIT + 60),
+    ):
         if not products:
             return {}
         orbit_products = [p["identifier"] for p in products.values()]
         validity_info = [SentinelOrbit(product_id) for product_id in orbit_products]
-        product_id = lastval_cover(t0, t1, validity_info)
+        product_id = lastval_cover(t0, t1, validity_info, margin0=margin0)
         return {k: v for k, v in products.items() if v["identifier"] == product_id}
 
     def query_orbit_for_product(
@@ -147,7 +154,12 @@ class ScihubGnssClient:
                     product_type="AUX_POEORB",
                 )
                 try:
-                    result = self._select_orbit(products, dt, dt + timedelta(minutes=1))
+                    result = self._select_orbit(
+                        products,
+                        dt,
+                        dt + timedelta(minutes=1),
+                        margin0=timedelta(seconds=T_ORBIT + 60),
+                    )
                 except ValidityError:
                     result = None
             else:
@@ -169,6 +181,7 @@ class ScihubGnssClient:
                         products,
                         dt,
                         dt + timedelta(minutes=1),
+                        margin0=timedelta(seconds=T_ORBIT - 1),
                     )
                     if products
                     else None
@@ -218,8 +231,6 @@ class ASFClient:
 
     def get_full_eof_list(self, orbit_type="precise", max_dt=None):
         """Get the list of orbit files from the ASF server."""
-        from .parsing import EOFLinkFinder
-
         if orbit_type not in self.urls.keys():
             raise ValueError("Unknown orbit type: {}".format(orbit_type))
 
@@ -295,6 +306,7 @@ class ASFClient:
     def _get_cached_filenames(self, orbit_type="precise"):
         """Get the cache path for the ASF orbit files."""
         filepath = self._get_filename_cache_path(orbit_type)
+        print(f"{filepath = }")
         if os.path.exists(filepath):
             with open(filepath, "r") as f:
                 return [SentinelOrbit(f) for f in f.read().splitlines()]
@@ -324,6 +336,7 @@ class ASFClient:
         """
         path = os.getenv("XDG_CACHE_HOME", os.path.expanduser("~/.cache"))
         path = os.path.join(path, "sentineleof")  # Make subfolder for our downloads
+        print(path)
         if not os.path.exists(path):
             os.makedirs(path)
         return path
