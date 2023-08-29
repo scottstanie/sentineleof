@@ -1,5 +1,7 @@
 import datetime
 
+import pytest
+
 from eof.scihubclient import ASFClient, ScihubGnssClient
 from eof.products import Sentinel
 
@@ -33,6 +35,7 @@ def test_query_resorb_edge_case():
     )
 
 
+@pytest.mark.skip("Local testing only for ASF")
 def test_asf_client():
     dt = datetime.datetime(2020, 1, 1)
     mission = "S1A"
@@ -42,6 +45,7 @@ def test_asf_client():
     assert urls == [expected]
 
 
+@pytest.mark.skip("Local testing only for ASF")
 def test_asf_full_url_list(monkeypatch, tmp_path):
     monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path))
     asfclient = ASFClient()
