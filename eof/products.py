@@ -71,7 +71,7 @@ class Base(object):
         if not self.FILE_REGEX:
             raise NotImplementedError("Must define class FILE_REGEX to parse")
 
-        match = re.search(self.FILE_REGEX, self.filename)
+        match = re.search(self.FILE_REGEX, str(self.filename))
         if not match:
             raise ValueError(
                 "Invalid {} filename: {}".format(self.__class__.__name__, self.filename)
