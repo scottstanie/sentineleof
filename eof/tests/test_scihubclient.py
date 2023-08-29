@@ -1,14 +1,14 @@
 import datetime
 
-from eof.scihubclient import ScihubGnssClient
+from eof.scihubclient import ASFClient, ScihubGnssClient
 from eof.products import Sentinel
 
 
-def test_query_orbit_by_dr():
+def test_scihub_query_orbit_by_dt():
     dt = datetime.datetime(2020, 1, 1)
-    missions = ["S1A"]
+    mission = "S1A"
     c = ScihubGnssClient()
-    results = c.query_orbit_by_dt([dt], missions, orbit_type="restituted")
+    results = c.query_orbit_by_dt([dt], [mission], orbit_type="restituted")
     assert len(results) == 1
     r = results["9a844886-45e7-48ec-8bc4-5d9ea91f0553"]
     assert r["endposition"] > dt
@@ -31,3 +31,22 @@ def test_query_resorb_edge_case():
         r["title"]
         == "S1A_OPER_AUX_RESORB_OPOD_20230823T174849_V20230823T141024_20230823T172754"
     )
+
+
+def test_asf_client():
+    dt = datetime.datetime(2020, 1, 1)
+    mission = "S1A"
+    asfclient = ASFClient()
+    urls = asfclient.get_download_urls([dt], [mission], orbit_type="restituted")
+    expected = "https://s1qc.asf.alaska.edu/aux_resorb/S1A_OPER_AUX_RESORB_OPOD_20200101T012955_V20191231T212606_20200101T004336.EOF"  # noqa
+    assert urls == [expected]
+
+
+def test_asf_full_url_list(monkeypatch, tmp_path):
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path))
+    asfclient = ASFClient()
+    urls = asfclient.get_full_eof_list()
+    assert len(urls) > 0
+    assert (tmp_path / "sentineleof" / "precise_filenames.txt").exists()
+    # Should be quick second time
+    assert len(asfclient.get_full_eof_list())

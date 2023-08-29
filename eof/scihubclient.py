@@ -13,6 +13,8 @@ from sentinelsat.exceptions import ServerError
 from .log import logger
 from .products import Sentinel as S1Product
 from .products import SentinelOrbit
+from .parsing import EOFLinkFinder
+
 
 T_ORBIT = (12 * 86400.0) / 175.0
 """Orbital period of Sentinel-1 in seconds"""
@@ -229,8 +231,6 @@ class ASFClient:
 
     def get_full_eof_list(self, orbit_type="precise", max_dt=None):
         """Get the list of orbit files from the ASF server."""
-        from .parsing import EOFLinkFinder
-
         if orbit_type not in self.urls.keys():
             raise ValueError("Unknown orbit type: {}".format(orbit_type))
 
@@ -306,6 +306,7 @@ class ASFClient:
     def _get_cached_filenames(self, orbit_type="precise"):
         """Get the cache path for the ASF orbit files."""
         filepath = self._get_filename_cache_path(orbit_type)
+        print(f"{filepath = }")
         if os.path.exists(filepath):
             with open(filepath, "r") as f:
                 return [SentinelOrbit(f) for f in f.read().splitlines()]
@@ -335,6 +336,7 @@ class ASFClient:
         """
         path = os.getenv("XDG_CACHE_HOME", os.path.expanduser("~/.cache"))
         path = os.path.join(path, "sentineleof")  # Make subfolder for our downloads
+        print(path)
         if not os.path.exists(path):
             os.makedirs(path)
         return path
