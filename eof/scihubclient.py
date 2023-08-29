@@ -156,7 +156,7 @@ class ScihubGnssClient:
                         products,
                         dt,
                         dt + timedelta(minutes=1),
-                        margin0=timedelta(T_ORBIT + 60),
+                        margin0=timedelta(seconds=T_ORBIT + 60),
                     )
                 except ValidityError:
                     result = None
@@ -179,7 +179,7 @@ class ScihubGnssClient:
                         products,
                         dt,
                         dt + timedelta(minutes=1),
-                        margin0=timedelta(T_ORBIT - 1),
+                        margin0=timedelta(seconds=T_ORBIT - 1),
                     )
                     if products
                     else None
