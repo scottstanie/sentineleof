@@ -26,11 +26,11 @@ def lastval_cover(
     t0: datetime,
     t1: datetime,
     data: Sequence[SentinelOrbit],
+    margin0=timedelta(seconds=T_ORBIT + 60),
+    margin1=timedelta(minutes=5),
 ) -> str:
     # Using a start margin of > 1 orbit so that the start of the orbit file will
     # cover the ascending node crossing of the acquisition
-    margin0 = timedelta(seconds=T_ORBIT + 60)
-    margin1 = timedelta(minutes=5)
     candidates = [
         item
         for item in data
@@ -85,12 +85,17 @@ class ScihubGnssClient:
         return products
 
     @staticmethod
-    def _select_orbit(products: dict[str, dict], t0: datetime, t1: datetime):
+    def _select_orbit(
+        products: dict[str, dict],
+        t0: datetime,
+        t1: datetime,
+        margin0: timedelta = timedelta(seconds=T_ORBIT + 60),
+    ):
         if not products:
             return {}
         orbit_products = [p["identifier"] for p in products.values()]
         validity_info = [SentinelOrbit(product_id) for product_id in orbit_products]
-        product_id = lastval_cover(t0, t1, validity_info)
+        product_id = lastval_cover(t0, t1, validity_info, margin0=margin0)
         return {k: v for k, v in products.items() if v["identifier"] == product_id}
 
     def query_orbit_for_product(
@@ -147,7 +152,12 @@ class ScihubGnssClient:
                     product_type="AUX_POEORB",
                 )
                 try:
-                    result = self._select_orbit(products, dt, dt + timedelta(minutes=1))
+                    result = self._select_orbit(
+                        products,
+                        dt,
+                        dt + timedelta(minutes=1),
+                        margin0=timedelta(T_ORBIT + 60),
+                    )
                 except ValidityError:
                     result = None
             else:
@@ -169,6 +179,7 @@ class ScihubGnssClient:
                         products,
                         dt,
                         dt + timedelta(minutes=1),
+                        margin0=timedelta(T_ORBIT - 1),
                     )
                     if products
                     else None
