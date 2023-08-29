@@ -37,8 +37,8 @@ def test_asf_client():
     dt = datetime.datetime(2020, 1, 1)
     mission = "S1A"
     asfclient = ASFClient()
-    urls = asfclient.get_download_urls([dt], [mission], orbit_type="restituted")
-    expected = "https://s1qc.asf.alaska.edu/aux_resorb/S1A_OPER_AUX_RESORB_OPOD_20200101T012955_V20191231T212606_20200101T004336.EOF"  # noqa
+    urls = asfclient.get_download_urls([dt], [mission], orbit_type="precise")
+    expected = "https://s1qc.asf.alaska.edu/aux_poeorb/S1A_OPER_AUX_POEORB_OPOD_20210315T155112_V20191230T225942_20200101T005942.EOF"  # noqa
     assert urls == [expected]
 
 
