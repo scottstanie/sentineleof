@@ -228,7 +228,7 @@ def find_scenes_to_download(search_path="./", save_dir="./"):
 
 def main(
     search_path=".",
-    save_dir=",",
+    save_dir=".",
     sentinel_file=None,
     mission=None,
     date=None,
