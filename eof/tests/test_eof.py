@@ -2,7 +2,7 @@ import datetime
 
 import pytest
 
-from eof import download
+from eof import download, products
 
 
 def test_find_scenes_to_download(tmpdir):
@@ -29,7 +29,8 @@ def test_download_eofs_errors():
     orbit_dates = [datetime.datetime(2018, 5, 2, 4, 30, 26)]
     with pytest.raises(ValueError):
         download.download_eofs(orbit_dates, missions=["BadMissionStr"])
-    # More missions for dates
+    # 1 date, 2 missions ->
+    # ValueError: missions arg must be same length as orbit_dts
     with pytest.raises(ValueError):
         download.download_eofs(orbit_dates, missions=["S1A", "S1B"])
 
@@ -44,6 +45,10 @@ def test_main_error_args():
         download.main(search_path="/notreal", mission="S1A")
 
 
-def test_mission(tmpdir):
+def test_download_mission_date(tmpdir):
     with tmpdir.as_cwd():
-        download.main(mission="S1A", date="20200101")
+        filenames = download.main(mission="S1A", date="20200101")
+    assert len(filenames) == 1
+    product = products.SentinelOrbit(filenames[0])
+    assert product.start_time < datetime.datetime(2020, 1, 1)
+    assert product.stop_time > datetime.datetime(2020, 1, 1, 23, 59)
