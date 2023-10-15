@@ -251,7 +251,12 @@ def main(
         orbit_dts, missions = None, None
     elif date:
         missions = [mission] if mission else ["S1A", "S1B"]
-        orbit_dts = [date] * len(missions)
+        orbit_dts = [parse(date)] * len(missions)
+        # Check they didn't pass a whole datetime
+        if all((dt.hour == 0 and dt.minute == 0) for dt in orbit_dts):
+            # If we only specify dates, make sure the whole thing is covered
+            # This means we should set the `hour` to be late in the day
+            orbit_dts = [dt.replace(hour=23) for dt in orbit_dts]
     else:
         # No command line args given: search current directory
         orbit_dts, missions = find_scenes_to_download(
