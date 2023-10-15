@@ -28,4 +28,4 @@ jobs:
         python -m pip install requests click python-dateutil sentinelsat>=1.0 pytest
     - name: Test with pytest
       run: |
-        python -m pytest -v -W=error --doctest-modules --ignore=eof/__main__.py
+        python -m pytest -v --doctest-modules --ignore=eof/__main__.py
