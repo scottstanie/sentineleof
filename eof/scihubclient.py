@@ -181,7 +181,9 @@ class ScihubGnssClient:
                         products,
                         dt,
                         dt + timedelta(minutes=1),
-                        margin0=timedelta(seconds=T_ORBIT - 1),
+                        # For restituted orbits, we need to be more lenient
+                        # and can't use a full orbit margin for the search
+                        margin0=timedelta(seconds=60),
                     )
                     if products
                     else None
