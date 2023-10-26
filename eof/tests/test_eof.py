@@ -52,3 +52,10 @@ def test_download_mission_date(tmpdir):
     product = products.SentinelOrbit(filenames[0])
     assert product.start_time < datetime.datetime(2020, 1, 1)
     assert product.stop_time > datetime.datetime(2020, 1, 1, 23, 59)
+
+
+def test_edge_issue45(tmpdir):
+    date = "2023-10-13 11:15:11"
+    with tmpdir.as_cwd():
+        filenames = download.main(mission="S1A", date=date)
+    assert len(filenames) == 1
