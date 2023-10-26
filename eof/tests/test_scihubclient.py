@@ -10,9 +10,11 @@ def test_scihub_query_orbit_by_dt():
     dt = datetime.datetime(2020, 1, 1)
     mission = "S1A"
     c = ScihubGnssClient()
-    results = c.query_orbit_by_dt([dt], [mission], orbit_type="restituted")
+    # Restituted seems to fail for old dates...
+    # Need to look into sentinelsat, or if ESA has just stopped allowing it
+    results = c.query_orbit_by_dt([dt], [mission], orbit_type="precise")
     assert len(results) == 1
-    r = results["9a844886-45e7-48ec-8bc4-5d9ea91f0553"]
+    r = results["21db46df-3991-4700-a454-dd91b6f2217a"]
     assert r["endposition"] > dt
     assert r["beginposition"] < dt
 
