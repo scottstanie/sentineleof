@@ -5,6 +5,7 @@ import pytest
 from eof import download, products
 
 
+@pytest.mark.vcr
 def test_find_scenes_to_download(tmpdir):
     with tmpdir.as_cwd():
         name1 = (
@@ -25,6 +26,7 @@ def test_find_scenes_to_download(tmpdir):
         assert sorted(missions) == ["S1A", "S1B"]
 
 
+@pytest.mark.vcr
 def test_download_eofs_errors():
     orbit_dates = [datetime.datetime(2018, 5, 2, 4, 30, 26)]
     with pytest.raises(ValueError):
@@ -45,6 +47,7 @@ def test_main_error_args():
         download.main(search_path="/notreal", mission="S1A")
 
 
+@pytest.mark.vcr
 def test_download_mission_date(tmpdir):
     with tmpdir.as_cwd():
         filenames = download.main(mission="S1A", date="20200101")
@@ -54,6 +57,7 @@ def test_download_mission_date(tmpdir):
     assert product.stop_time > datetime.datetime(2020, 1, 1, 23, 59)
 
 
+@pytest.mark.vcr
 def test_edge_issue45(tmpdir):
     date = "2023-10-13 11:15:11"
     with tmpdir.as_cwd():

@@ -21,24 +21,17 @@
 # Source code copied form:
 # https://github.com/scottstanie/apertools/blob/77e6330499adc01c3860f49ee6b3875c49532b76/apertools/parsers.py
 
-"""
-Utilities for parsing file names of SAR products for relevant info.
-
-"""
+"""Utilities for parsing file names of SAR products for relevant info."""
+from __future__ import annotations
 
 import re
 from datetime import datetime
-
 
 __all__ = ["Sentinel", "SentinelOrbit"]
 
 
 class Base(object):
     """Base parser to illustrate expected interface/ minimum data available"""
-
-    FILE_REGEX = None
-    TIME_FMT = None
-    _FIELD_MEANINGS = None
 
     def __init__(self, filename, verbose=False):
         """
@@ -68,7 +61,7 @@ class Base(object):
         Raises:
             ValueError: if filename string is invalid
         """
-        if not self.FILE_REGEX:
+        if not hasattr(self, "FILE_REGEX"):
             raise NotImplementedError("Must define class FILE_REGEX to parse")
 
         match = re.search(self.FILE_REGEX, str(self.filename))
@@ -211,7 +204,7 @@ class Sentinel(Base):
 
     @property
     def level(self):
-        """Alias for product type/level """
+        """Alias for product type/level"""
         return self.product_type
 
     @property
@@ -307,6 +300,7 @@ class SentinelOrbit(Base):
     Attributes:
         filename (str) name of the sentinel data product
     """
+
     TIME_FMT = "%Y%m%dT%H%M%S"
     FILE_REGEX = (
         r"(?P<mission>S1A|S1B)_OPER_AUX_"
@@ -332,7 +326,12 @@ class SentinelOrbit(Base):
         return self.start_time < dt < self.stop_time
 
     def __eq__(self, other):
-        return (self.mission, self.start_time, self.stop_time, self.orbit_type,) == (
+        return (
+            self.mission,
+            self.start_time,
+            self.stop_time,
+            self.orbit_type,
+        ) == (
             other.mission,
             other.start_time,
             other.stop_time,

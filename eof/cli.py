@@ -1,6 +1,10 @@
 """
 CLI tool for downloading Sentinel 1 EOF files
 """
+from __future__ import annotations
+
+import logging
+
 import click
 
 from eof import download, log
@@ -49,7 +53,26 @@ from eof import download, log
     help="Optionally specify the type of orbit file to get "
     "(default: precise (POEORB), but fallback to restituted (RESORB))",
 )
-def cli(search_path, save_dir, sentinel_file, date, mission, orbit_type):
+@click.option(
+    "--force-asf",
+    is_flag=True,
+    help="Force the downloader to search ASF instead of ESA.",
+)
+@click.option(
+    "--debug",
+    is_flag=True,
+    help="Set logging level to DEBUG",
+)
+def cli(
+    search_path: str,
+    save_dir: str,
+    sentinel_file: str,
+    date: str,
+    mission: str,
+    orbit_type: str,
+    force_asf: bool,
+    debug: bool,
+):
     """Download Sentinel precise orbit files.
 
     Saves files to `save-dir` (default = current directory)
@@ -58,7 +81,7 @@ def cli(search_path, save_dir, sentinel_file, date, mission, orbit_type):
     Will find both ".SAFE" and ".zip" files matching Sentinel-1 naming convention.
     With no arguments, searches current directory for Sentinel 1 products
     """
-    log._set_logger_handler()
+    log._set_logger_handler(level=logging.DEBUG if debug else logging.INFO)
     download.main(
         search_path=search_path,
         save_dir=save_dir,
@@ -66,4 +89,5 @@ def cli(search_path, save_dir, sentinel_file, date, mission, orbit_type):
         mission=mission,
         date=date,
         orbit_type=orbit_type,
+        force_asf=force_asf,
     )

@@ -21,16 +21,21 @@ https://earth.esa.int/documents/247904/349490/GMES_Sentinels_POD_Service_File_Fo
 
 See parsers for Sentinel file naming description
 """
-import os
+from __future__ import annotations
+
 import glob
-from zipfile import ZipFile
 import itertools
-import requests
+import os
 from multiprocessing.pool import ThreadPool
+from zipfile import ZipFile
+
+import requests
 from dateutil.parser import parse
-from .scihubclient import ASFClient, ScihubGnssClient
-from .products import Sentinel, SentinelOrbit
+
+from .asf_client import ASFClient
+from .dataspace_client import DataspaceClient
 from .log import logger
+from .products import Sentinel, SentinelOrbit
 
 MAX_WORKERS = 6  # workers to download in parallel (for ASF backup)
 
@@ -77,11 +82,11 @@ def download_eofs(
     orbit_dts = [parse(dt) if isinstance(dt, str) else dt for dt in orbit_dts]
 
     filenames = []
-    scihub_successful = False
-    client = ScihubGnssClient()
+    dataspace_successful = False
 
     # First, check that Scihub isn't having issues
-    if client.server_is_up() and not force_asf:
+    if not force_asf:
+        client = DataspaceClient()
         # try to search on scihub
         if sentinel_file:
             query = client.query_orbit_for_product(sentinel_file, orbit_type=orbit_type)
@@ -90,13 +95,13 @@ def download_eofs(
 
         if query:
             logger.info("Attempting download from SciHub")
-            result = client.download_all(query, directory_path=save_dir)
-            filenames.extend(item["path"] for item in result.downloaded.values())
-            scihub_successful = True
+            results = client.download_all(query, output_directory=save_dir)
+            filenames.extend(results)
+            dataspace_successful = True
 
     # For failures from scihub, try ASF
-    if not scihub_successful:
-        logger.warning("Scihub failed, trying ASF")
+    if not dataspace_successful:
+        logger.warning("Dataspace failed, trying ASF")
         asfclient = ASFClient()
         urls = asfclient.get_download_urls(orbit_dts, missions, orbit_type=orbit_type)
         # Download and save all links in parallel
@@ -135,13 +140,6 @@ def _download_and_write(url, save_dir=".", asf_user="", asf_password=""):
         return [fname]
 
     logger.info("Downloading %s", url)
-    # Fix URL
-    if "s1qc.asf.alaska.edu" in url:
-        url = (
-            "https://urs.earthdata.nasa.gov/oauth/authorize?response_type=code&client_id=BO_n7nTIlMljdvU6kRRB3g&redirect_uri=https://auth.asf.alaska.edu/login&state="
-            + url
-            + "&app_type=401"
-        )
     # Add credentials
     response = requests.get(url, auth=(asf_user, asf_password))
     response.raise_for_status()

@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/scottstanie/sentineleof.svg?branch=master)](https://travis-ci.org/scottstanie/sentineleof) 
+[![Build Status](https://travis-ci.org/scottstanie/sentineleof.svg?branch=master)](https://travis-ci.org/scottstanie/sentineleof)
 
 # Sentinel EOF
 
@@ -17,7 +17,7 @@ or through conda:
 conda install -c conda-forge sentineleof
 ```
 
-This will put the executable `eof` on your path 
+This will put the executable `eof` on your path
 
 
 If you have a bunch of Sentinel 1 zip files (or unzipped SAFE folders), you can simply run

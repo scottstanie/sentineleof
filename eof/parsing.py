@@ -1,7 +1,10 @@
 """Module for parsing the orbit state vectors (OSVs) from the .EOF file"""
+from __future__ import annotations
+
 from datetime import datetime, timezone
-from xml.etree import ElementTree
 from html.parser import HTMLParser
+from xml.etree import ElementTree
+
 from .log import logger
 
 
@@ -55,7 +58,6 @@ def parse_orbit(
     max_time=datetime(2100, 1, 1),
     extra_osvs=1,
 ):
-
     min_time = to_datetime(min_time)
     max_time = to_datetime(max_time)
     logger.info(
