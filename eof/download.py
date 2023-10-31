@@ -30,7 +30,8 @@ from zipfile import ZipFile
 import requests
 from dateutil.parser import parse
 
-from .dataspace_client import ASFClient, DataspaceClient
+from .dataspace_client import DataspaceClient
+from .asf_client import ASFClient
 from .log import logger
 from .products import Sentinel, SentinelOrbit
 
@@ -92,7 +93,7 @@ def download_eofs(
 
         if query:
             logger.info("Attempting download from SciHub")
-            result = client.download_all(query, directory_path=save_dir)
+            result = client.download_all(query, output_directory=save_dir)
             filenames.extend(item["path"] for item in result.downloaded.values())
             dataspace_successful = True
 
@@ -137,13 +138,6 @@ def _download_and_write(url, save_dir=".", asf_user="", asf_password=""):
         return [fname]
 
     logger.info("Downloading %s", url)
-    # Fix URL
-    if "s1qc.asf.alaska.edu" in url:
-        url = (
-            "https://urs.earthdata.nasa.gov/oauth/authorize?response_type=code&client_id=BO_n7nTIlMljdvU6kRRB3g&redirect_uri=https://auth.asf.alaska.edu/login&state="
-            + url
-            + "&app_type=401"
-        )
     # Add credentials
     response = requests.get(url, auth=(asf_user, asf_password))
     response.raise_for_status()
