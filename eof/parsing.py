@@ -1,7 +1,10 @@
 """Module for parsing the orbit state vectors (OSVs) from the .EOF file"""
+from __future__ import annotations
+
 from datetime import datetime, timezone
-from xml.etree import ElementTree
 from html.parser import HTMLParser
+from xml.etree import ElementTree
+
 from .log import logger
 
 

@@ -22,10 +22,10 @@
 # https://github.com/scottstanie/apertools/blob/77e6330499adc01c3860f49ee6b3875c49532b76/apertools/parsers.py
 
 """Utilities for parsing file names of SAR products for relevant info."""
+from __future__ import annotations
 
 import re
 from datetime import datetime
-
 
 __all__ = ["Sentinel", "SentinelOrbit"]
 

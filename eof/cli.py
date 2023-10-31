@@ -1,6 +1,8 @@
 """
 CLI tool for downloading Sentinel 1 EOF files
 """
+from __future__ import annotations
+
 import logging
 
 import click

@@ -21,6 +21,8 @@ https://earth.esa.int/documents/247904/349490/GMES_Sentinels_POD_Service_File_Fo
 
 See parsers for Sentinel file naming description
 """
+from __future__ import annotations
+
 import glob
 import itertools
 import os
@@ -30,8 +32,8 @@ from zipfile import ZipFile
 import requests
 from dateutil.parser import parse
 
-from .dataspace_client import DataspaceClient
 from .asf_client import ASFClient
+from .dataspace_client import DataspaceClient
 from .log import logger
 from .products import Sentinel, SentinelOrbit
 
