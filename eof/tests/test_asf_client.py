@@ -8,6 +8,11 @@ from eof.asf_client import ASFClient
 # pytest --record-mode=once test_network.py
 @pytest.mark.vcr
 def test_asf_client():
+    ASFClient()
+
+
+@pytest.mark.vcr
+def test_asf_client_download():
     dt = datetime.datetime(2020, 1, 1)
     mission = "S1A"
     asfclient = ASFClient()
