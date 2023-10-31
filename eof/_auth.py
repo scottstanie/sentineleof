@@ -53,6 +53,18 @@ def _file_is_0600(filename: Filename):
     return oct(Path(filename).stat().st_mode)[-4:] == "0600"
 
 
+def get_netrc_credentials(host: str) -> tuple[str, str]:
+    """Get username and password from netrc file for a given host."""
+    n = netrc.netrc()
+    auth = n.authenticators(host)
+    if auth is None:
+        raise ValueError(f"No username/password found for {host} in ~/.netrc")
+    username, _, password = auth
+    if username is None or password is None:
+        raise ValueError(f"No username/password found for {host} in ~/.netrc")
+    return username, password
+
+
 def _get_username_pass(host: str):
     """If netrc is not set up, get username/password via command line input."""
     if host == NASA_HOST:
