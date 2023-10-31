@@ -6,11 +6,11 @@ from datetime import timedelta
 
 import requests
 
+from ._auth import NASA_HOST, setup_netrc
+from ._select_orbit import T_ORBIT, ValidityError, last_valid_orbit
 from .log import logger
 from .parsing import EOFLinkFinder
 from .products import SentinelOrbit
-from ._select_orbit import T_ORBIT, ValidityError, lastval_cover
-from ._auth import setup_netrc, NASA_HOST
 
 SIGNUP_URL = "https://urs.earthdata.nasa.gov/users/new"
 """Url to prompt user to sign up for NASA Earthdata account."""
@@ -86,7 +86,7 @@ class ASFClient:
         urls = []
         for dt, mission in zip(orbit_dts, missions):
             try:
-                filename = lastval_cover(
+                filename = last_valid_orbit(
                     dt, dt, mission_to_eof_list[mission], margin0=margin0
                 )
                 urls.append(self.urls[orbit_type] + filename)
@@ -141,7 +141,7 @@ class ASFClient:
         """
         path = os.getenv("XDG_CACHE_HOME", os.path.expanduser("~/.cache"))
         path = os.path.join(path, "sentineleof")  # Make subfolder for our downloads
-        print(path)
+        logger.debug("Cache path: %s", path)
         if not os.path.exists(path):
             os.makedirs(path)
         return path

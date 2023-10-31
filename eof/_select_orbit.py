@@ -1,4 +1,4 @@
-"""Module for filtering/selecting from orbit query results."""
+"""Module for filtering/selecting from orbit query"""
 from __future__ import annotations
 
 import operator
@@ -19,7 +19,7 @@ class ValidityError(ValueError):
     pass
 
 
-def lastval_cover(
+def last_valid_orbit(
     t0: datetime,
     t1: datetime,
     data: Sequence[SentinelOrbit],

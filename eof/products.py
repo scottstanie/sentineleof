@@ -21,10 +21,7 @@
 # Source code copied form:
 # https://github.com/scottstanie/apertools/blob/77e6330499adc01c3860f49ee6b3875c49532b76/apertools/parsers.py
 
-"""
-Utilities for parsing file names of SAR products for relevant info.
-
-"""
+"""Utilities for parsing file names of SAR products for relevant info."""
 
 import re
 from datetime import datetime
@@ -35,10 +32,6 @@ __all__ = ["Sentinel", "SentinelOrbit"]
 
 class Base(object):
     """Base parser to illustrate expected interface/ minimum data available"""
-
-    FILE_REGEX = None
-    TIME_FMT = None
-    _FIELD_MEANINGS = None
 
     def __init__(self, filename, verbose=False):
         """
@@ -68,7 +61,7 @@ class Base(object):
         Raises:
             ValueError: if filename string is invalid
         """
-        if not self.FILE_REGEX:
+        if hasattr(self, "FILE_REGEX"):
             raise NotImplementedError("Must define class FILE_REGEX to parse")
 
         match = re.search(self.FILE_REGEX, str(self.filename))
@@ -418,3 +411,65 @@ class SentinelOrbit(Base):
     def date(self):
         """Date of acquisition: shortcut for start_time.date()"""
         return self.start_time.date()
+
+
+# Make a class for the DataspaceQueryResult
+# {'@odata.mediaContentType': 'application/octet-stream',
+#   'Id': '21db46df-3991-4700-a454-dd91b6f2217a',
+#   'Name': 'S1A_OPER_AUX_POEORB_OPOD_20210315T155112_V20191230T225942_20200101T005942.EOF',
+#   'ContentType': 'application/octet-stream',
+#   'ContentLength': 4409905,
+#   'OriginDate': '2021-04-17T10:54:33.561Z',
+#   'PublicationDate': '2023-10-25T14:34:15.278Z',
+#   'ModificationDate': '2023-10-25T14:49:02.414Z',
+#   'Online': True,
+#   'EvictionDate': '',
+#   'S3Path': '/eodata/Sentinel-1/AUX/AUX_POEORB/2019/12/30/S1A_OPER_AUX_POEORB_OPOD_20210315T155112_V20191230T225942_20200101T005942.EOF',
+#   'Checksum': [{'Value': 'e0345368421e1b65127adc6ea103ab53',
+#     'Algorithm': 'MD5',
+#     'ChecksumDate': '2023-10-25T14:49:02.002746Z'},
+#    {'Value': 'b8fcec2aca5a68702f4887652b17994e4f23fb2392501dfba4106bee5ad7ce94',
+#     'Algorithm': 'BLAKE3',
+#     'ChecksumDate': '2023-10-25T14:49:02.020456Z'}],
+#   'ContentDate': {'Start': '2019-12-30T22:59:42.000Z',
+#    'End': '2020-01-01T00:59:42.000Z'},
+#   'Footprint': None,
+#   'GeoFootprint': None}
+
+# class DataspaceQueryResult:
+#     """Query result from OData Dataspace API
+
+#         {'@odata.mediaContentType': 'application/octet-stream',
+#     'Id': '21db46df-3991-4700-a454-dd91b6f2217a',
+#     'Name': 'S1A_OPER_AUX_POEORB_OPOD_20210315T155112_V20191230T225942_20200101T005942.EOF',
+#     'ContentType': 'application/octet-stream',
+#     'ContentLength': 4409905,
+#     'OriginDate': '2021-04-17T10:54:33.561Z',
+#     'PublicationDate': '2023-10-25T14:34:15.278Z',
+#     'ModificationDate': '2023-10-25T14:49:02.414Z',
+#     'Online': True,
+#     'EvictionDate': '',
+#     'S3Path': '/eodata/Sentinel-1/AUX/AUX_POEORB/2019/12/30/S1A_OPER_AUX_POEORB_OPOD_20210315T155112_V20191230T225942_20200101T005942.EOF',
+#     'Checksum': [{'Value': 'e0345368421e1b65127adc6ea103ab53',
+#         'Algorithm': 'MD5',
+#         'ChecksumDate': '2023-10-25T14:49:02.002746Z'},
+#     {'Value': 'b8fcec2aca5a68702f4887652b17994e4f23fb2392501dfba4106bee5ad7ce94',
+#         'Algorithm': 'BLAKE3',
+#         'ChecksumDate': '2023-10-25T14:49:02.020456Z'}],
+#     'ContentDate': {'Start': '2019-12-30T22:59:42.000Z',
+#     'End': '2020-01-01T00:59:42.000Z'},
+#     'Footprint': None,
+#     'GeoFootprint': None}
+#     """
+#     identifier: str
+#     name: str
+#     content_type: str
+#     content_length: int
+#     origin_date: datetime
+#     publication_date: datetime
+#     modification_date: datetime
+#     online: bool
+#     eviction_date: datetime
+#     s3_path: str
+#     checksum: dict
+#     start_time: datetime

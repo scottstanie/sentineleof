@@ -93,8 +93,8 @@ def download_eofs(
 
         if query:
             logger.info("Attempting download from SciHub")
-            result = client.download_all(query, output_directory=save_dir)
-            filenames.extend(item["path"] for item in result.downloaded.values())
+            results = client.download_all(query, output_directory=save_dir)
+            filenames.extend(results)
             dataspace_successful = True
 
     # For failures from scihub, try ASF

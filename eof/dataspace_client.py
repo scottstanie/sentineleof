@@ -1,17 +1,16 @@
 """Client to get orbit files from dataspace.copernicus.eu ."""
 from __future__ import annotations
 
-import os
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import requests
 
-from ._auth import setup_netrc, DATASPACE_HOST
-from ._select_orbit import T_ORBIT, ValidityError, lastval_cover
+from ._auth import DATASPACE_HOST, get_netrc_credentials, setup_netrc
+from ._select_orbit import T_ORBIT
+from ._types import Filename
 from .log import logger
-from .parsing import EOFLinkFinder
 from .products import Sentinel as S1Product
-from .products import SentinelOrbit
 
 QUERY_URL = "https://catalogue.dataspace.copernicus.eu/odata/v1/Products"
 """Default URL endpoint for the Copernicus Data Space Ecosystem (CDSE) query REST service"""
@@ -27,43 +26,30 @@ SIGNUP_URL = "https://dataspace.copernicus.eu/"
 
 
 class DataspaceClient:
-    T0 = timedelta(days=1)
-    T1 = timedelta(days=1)
+    T0 = timedelta(seconds=T_ORBIT + 60)
+    T1 = timedelta(seconds=60)
 
     def __init__(self):
         setup_netrc(host=DATASPACE_HOST)
 
     def query_orbit(
-        self, t0, t1, satellite_id: str, product_type: str = "AUX_POEORB"
-    ) -> dict[str, dict]:
-        assert satellite_id in {"S1A", "S1B"}
-        assert product_type in {"AUX_POEORB", "AUX_RESORB"}
-
-        query_params = dict(
-            producttype=product_type,
-            platformserialidentifier=satellite_id[1:],
-            # date=[t0, t1],
-            # use the following instead
-            beginposition=(None, t1),
-            endposition=(t0, None),
-        )
-        logger.debug("query parameter: %s", query_params)
-        products = self._api.query(**query_params)
-        return products
-
-    @staticmethod
-    def _select_orbit(
-        products: dict[str, dict],
+        self,
         t0: datetime,
         t1: datetime,
-        margin0: timedelta = timedelta(seconds=T_ORBIT + 60),
-    ):
-        if not products:
-            return {}
-        orbit_products = [p["identifier"] for p in products.values()]
-        validity_info = [SentinelOrbit(product_id) for product_id in orbit_products]
-        product_id = lastval_cover(t0, t1, validity_info, margin0=margin0)
-        return {k: v for k, v in products.items() if v["identifier"] == product_id}
+        satellite_id: str,
+        product_type: str = "AUX_POEORB",
+    ) -> list[dict]:
+        assert satellite_id in {"S1A", "S1B"}
+        assert product_type in {"AUX_POEORB", "AUX_RESORB"}
+        # return run_query(t0, t1, satellite_id, product_type)
+        # Construct the query based on the time range parsed from the input file
+        logger.info(
+            f"Querying for {product_type} orbit files from endpoint {QUERY_URL}"
+        )
+        query = _construct_orbit_file_query(satellite_id, product_type, t0, t1)
+        # Make the query to determine what Orbit files are available for the time
+        # range
+        return query_orbit_file_service(query)
 
     def query_orbit_for_product(
         self,
@@ -93,88 +79,84 @@ class DataspaceClient:
     ):
         """Query the Scihub api for product info for the specified missions/orbit_dts.
 
-        Args:
-            orbit_dts (list[datetime]): list of orbit datetimes
-            missions (list[str]): list of mission names
-            orbit_type (str, optional): Type of orbit to prefer in search.
-                Defaults to "precise".
-            t0_margin (timedelta, optional): Margin used in searching for early bound
-                for orbit.  Defaults to 1 day.
-            t1_margin (timedelta, optional): Margin used in searching for late bound
-                for orbit.  Defaults to 1 day.
+        Parameters
+        ----------
+        orbit_dts : list[datetime.datetime]
+            List of datetimes to query for
+        missions : list[str], choices = {"S1A", "S1B"}
+            List of missions to query for. Must be same length as orbit_dts
+        orbit_type : str, choices = {"precise", "restituted"}
+            String identifying the type of orbit file to query for.
+        t0_margin : timedelta
+            Margin to add to the start time of the orbit file in the query
+        t1_margin : timedelta
+            Margin to add to the end time of the orbit file in the query
 
-        Returns:
-            query (dict): API info from scihub with the requested products
+        Returns
+        -------
+        list[dict]
+            list of results from the query
         """
-        remaining_dates = []
-        query = {}
+        remaining_dates: list[tuple[str, datetime]] = []
+        all_results = []
         for dt, mission in zip(orbit_dts, missions):
-            found_result = False
             # Only check for precise orbits if that is what we want
             if orbit_type == "precise":
                 products = self.query_orbit(
                     dt - t0_margin,
                     dt + t1_margin,
+                    # dt - timedelta(seconds=T_ORBIT + 60),
+                    # dt + timedelta(seconds=60),
                     mission,
                     product_type="AUX_POEORB",
                 )
-                try:
-                    result = self._select_orbit(
-                        products,
-                        dt,
-                        dt + timedelta(minutes=1),
-                        margin0=timedelta(seconds=T_ORBIT + 60),
-                    )
-                except ValidityError:
+                if len(products) == 1:
+                    result = products[0]
+                elif len(products) > 1:
+                    logger.warning(f"Found more than one result: {products}")
+                    result = products[0]
+                else:
                     result = None
             else:
                 result = None
 
-            if result:
-                found_result = True
-                query.update(result)
+            if result is not None:
+                all_results.append(result)
             else:
                 # try with RESORB
                 products = self.query_orbit(
-                    dt - timedelta(hours=2),
-                    dt + timedelta(hours=2),
+                    dt - timedelta(seconds=T_ORBIT + 60),
+                    dt + timedelta(seconds=60),
                     mission,
                     product_type="AUX_RESORB",
                 )
-                result = (
-                    self._select_orbit(
-                        products,
-                        dt,
-                        dt + timedelta(minutes=1),
-                        # For restituted orbits, we need to be more lenient
-                        # and can't use a full orbit margin for the search
-                        margin0=timedelta(seconds=60),
-                    )
-                    if products
-                    else None
-                )
-                if result:
-                    found_result = True
-                    query.update(result)
+                if len(products) == 1:
+                    result = products[0]
+                elif len(products) > 1:
+                    logger.warning(f"Found more than one result: {products}")
+                    result = products[0]
+                else:
+                    result = None
+                    logger.warning(f"Found no restituted results for {dt} {mission}")
 
-            if not found_result:
+                if result:
+                    all_results.append(result)
+
+            if result is None:
                 remaining_dates.append((mission, dt))
 
         if remaining_dates:
             logger.warning("The following dates were not found: %s", remaining_dates)
-        return query
+        return all_results
 
-    def download(self, uuid, **kwargs):
-        """Download a single orbit product."""
-        # return self._api.download(uuid, **kwargs)
-        raise NotImplementedError
-
-    def download_all(self, products, **kwargs):
+    def download_all(self, query_results: list[dict], output_directory: Filename):
         """Download all the specified orbit products."""
-        return self._api.download_all(products, **kwargs)
+        return download_all(query_results, output_directory=output_directory)
 
 
-def _construct_orbit_file_query(mission_id, orbit_type, search_start, search_stop):
+def _construct_orbit_file_query(
+    mission_id: str, orbit_type: str, search_start: datetime, search_stop: datetime
+):
     """Constructs the query used with the query URL to determine the
     available Orbit files for the given time range.
 
@@ -202,7 +184,7 @@ def _construct_orbit_file_query(mission_id, orbit_type, search_start, search_sto
     # Set up templates that use the OData domain specific syntax expected by the
     # query service
     query_template = (
-        "startswith(Name,'{mission_id}') and contains(Name,'AUX_{orbit_type}') "
+        "startswith(Name,'{mission_id}') and contains(Name,'{orbit_type}') "
         "and ContentDate/Start lt '{start_time}' and ContentDate/End gt '{stop_time}'"
     )
 
@@ -222,15 +204,11 @@ def _construct_orbit_file_query(mission_id, orbit_type, search_start, search_sto
     return query
 
 
-def query_orbit_file_service(url, query):
-    """Submits a request to the Orbit file query REST service, and returns the
-    JSON-formatted response.
+def query_orbit_file_service(query: str) -> list[dict]:
+    """Submit a request to the Orbit file query REST service.
 
     Parameters
     ----------
-    url : str
-        The URL for the query endpoint, to which the query is appended to as
-        the payload.
     query : str
         The query for the Orbit files to find, filtered by a time range and mission
         ID corresponding to the provided SAFE SLC archive file.
@@ -255,7 +233,7 @@ def query_orbit_file_service(url, query):
     query_params = {"$filter": query, "$orderby": "ContentDate/Start asc", "$top": 1}
 
     # Make the HTTP GET request on the endpoint URL, no credentials are required
-    response = requests.get(url, params=query_params)
+    response = requests.get(QUERY_URL, params=query_params)  # type: ignore
 
     logger.debug(f"response.url: {response.url}")
     logger.debug(f"response.status_code: {response.status_code}")
@@ -271,126 +249,128 @@ def query_orbit_file_service(url, query):
     return query_results
 
 
-def get_access_token(username, password):
+def get_access_token():
+    """Get an access token for the Copernicus Data Space Ecosystem (CDSE) API.
+
+    Code from https://documentation.dataspace.copernicus.eu/APIs/Token.html
     """
-    https://documentation.dataspace.copernicus.eu/APIs/Token.html
+    username, password = get_netrc_credentials(DATASPACE_HOST)
+    data = {
+        "client_id": "cdse-public",
+        "username": username,
+        "password": password,
+        "grant_type": "password",
+    }
+
+    try:
+        r = requests.post(AUTH_URL, data=data)
+        r.raise_for_status()
+    except Exception as err:
+        raise RuntimeError(f"Access token creation failed. Reason: {str(err)}")
+
+    # Parse the access token from the response
+    try:
+        access_token = r.json()["access_token"]
+    except KeyError:
+        raise RuntimeError(
+            'Failed to parsed expected field "access_token" from authentication response.'
+        )
+
+    return access_token
+
+
+def download_orbit_file(
+    request_url, output_directory, orbit_file_name, access_token
+) -> Path:
+    """Downloads an Orbit file using the provided request URL.
+
+    Should contain product ID for the file to download, as obtained from a query result.
+
+    The output file is named according to the orbit_file_name parameter, and
+    should correspond to the file name parsed from the query result. The output
+    file is written to the directory indicated by output_directory.
+
+    Parameters
+    ----------
+    request_url : str
+        The full request URL, which includes the download endpoint, as well as
+        a payload that contains the product ID for the Orbit file to be downloaded.
+    output_directory : str
+        The directory to store the downloaded Orbit file to.
+    orbit_file_name : str
+        The file name to assign to the Orbit file once downloaded to disk. This
+        should correspond to the file name parsed from a query result.
+    access_token : str
+        Access token returned from an authentication request with the provided
+        username and password. Must be provided with all download requests for
+        the download service to respond.
+
+    Returns
+    -------
+    output_orbit_file_path : Path
+        The full path to where the resulting Orbit file was downloaded to.
+
+    Raises
+    ------
+    requests.HTTPError
+        If the request fails for any reason (HTTP return code other than 200).
+
     """
+    # Make the HTTP GET request to obtain the Orbit file contents
+    headers = {"Authorization": f"Bearer {access_token}"}
+    session = requests.Session()
+    session.headers.update(headers)
+    response = session.get(request_url, headers=headers, stream=True)
+
+    logger.debug(f"r.url: {response.url}")
+    logger.debug(f"r.status_code: {response.status_code}")
+
+    response.raise_for_status()
+
+    # Write the contents to disk
+    output_orbit_file_path = Path(output_directory) / orbit_file_name
+
+    with open(output_orbit_file_path, "wb") as outfile:
+        for chunk in response.iter_content(chunk_size=8192):
+            if chunk:
+                outfile.write(chunk)
+
+    return output_orbit_file_path
 
 
-class ASFClient:
-    precise_url = "https://s1qc.asf.alaska.edu/aux_poeorb/"
-    res_url = "https://s1qc.asf.alaska.edu/aux_resorb/"
-    urls = {"precise": precise_url, "restituted": res_url}
-    eof_lists = {"precise": None, "restituted": None}
+def download_all(query_results: list[dict], output_directory: Filename) -> list[Path]:
+    """Download all the specified orbit products.
 
-    def get_full_eof_list(self, orbit_type="precise", max_dt=None):
-        """Get the list of orbit files from the ASF server."""
-        if orbit_type not in self.urls.keys():
-            raise ValueError("Unknown orbit type: {}".format(orbit_type))
+    Parameters
+    ----------
+    query_results : list[dict]
+        list of results from the query
+    output_directory : str | Path
+        Directory to save the orbit files to.
+    """
+    downloaded_paths: list[Path] = []
+    # Select an appropriate orbit file from the list returned from the query
+    # orbit_file_name, orbit_file_request_id = select_orbit_file(
+    #     query_results, start_time, stop_time
+    # )
+    # Obtain an access token the download request from the provided credentials
+    access_token = get_access_token()
+    for query_result in query_results:
+        query_result = query_results[0]
+        orbit_file_name = query_result["Name"]
+        orbit_file_request_id = query_result["Id"]
 
-        if self.eof_lists.get(orbit_type) is not None:
-            return self.eof_lists[orbit_type]
-        # Try to see if we have the list of EOFs in the cache
-        elif os.path.exists(self._get_filename_cache_path(orbit_type)):
-            eof_list = self._get_cached_filenames(orbit_type)
-            # Need to clear it if it's older than what we're looking for
-            max_saved = max([e.start_time for e in eof_list])
-            if max_saved < max_dt:
-                logger.warning("Clearing cached {} EOF list:".format(orbit_type))
-                logger.warning(
-                    "{} is older than requested {}".format(max_saved, max_dt)
-                )
-                self._clear_cache(orbit_type)
-            else:
-                logger.info("Using cached EOF list")
-                self.eof_lists[orbit_type] = eof_list
-                return eof_list
+        # Construct the URL used to download the Orbit file
+        download_url = f"{DOWNLOAD_URL}({orbit_file_request_id})/$value"
 
-        logger.info("Downloading all filenames from ASF (may take awhile)")
-        resp = requests.get(self.urls.get(orbit_type))
-        finder = EOFLinkFinder()
-        finder.feed(resp.text)
-        eof_list = [SentinelOrbit(f) for f in finder.eof_links]
-        self.eof_lists[orbit_type] = eof_list
-        self._write_cached_filenames(orbit_type, eof_list)
-        return eof_list
+        logger.info(
+            f"Downloading Orbit file {orbit_file_name} from service endpoint "
+            f"{download_url}"
+        )
+        output_orbit_file_path = download_orbit_file(
+            download_url, output_directory, orbit_file_name, access_token
+        )
 
-    def get_download_urls(self, orbit_dts, missions, orbit_type="precise"):
-        """Find the URL for an orbit file covering the specified datetime
-
-        Args:
-            dt (datetime): requested
-        Args:
-            orbit_dts (list[str] or list[datetime]): datetime for orbit coverage
-            missions (list[str]): specify S1A or S1B
-
-        Returns:
-            str: URL for the orbit file
-        """
-        eof_list = self.get_full_eof_list(orbit_type=orbit_type, max_dt=max(orbit_dts))
-        # Split up for quicker parsing of the latest one
-        mission_to_eof_list = {
-            "S1A": [eof for eof in eof_list if eof.mission == "S1A"],
-            "S1B": [eof for eof in eof_list if eof.mission == "S1B"],
-        }
-        remaining_orbits = []
-        urls = []
-        for dt, mission in zip(orbit_dts, missions):
-            try:
-                filename = lastval_cover(dt, dt, mission_to_eof_list[mission])
-                urls.append(self.urls[orbit_type] + filename)
-            except ValidityError:
-                remaining_orbits.append((dt, mission))
-
-        if remaining_orbits:
-            logger.warning("The following dates were not found: %s", remaining_orbits)
-            if orbit_type == "precise":
-                logger.warning(
-                    "Attempting to download the restituted orbits for these dates."
-                )
-                remaining_dts, remaining_missions = zip(*remaining_orbits)
-                urls.extend(
-                    self.get_download_urls(
-                        remaining_dts, remaining_missions, orbit_type="restituted"
-                    )
-                )
-
-        return urls
-
-    def _get_cached_filenames(self, orbit_type="precise"):
-        """Get the cache path for the ASF orbit files."""
-        filepath = self._get_filename_cache_path(orbit_type)
-        logger.debug(f"ASF file path cache: {filepath = }")
-        if os.path.exists(filepath):
-            with open(filepath, "r") as f:
-                return [SentinelOrbit(f) for f in f.read().splitlines()]
-        return None
-
-    def _write_cached_filenames(self, orbit_type="precise", eof_list=[]):
-        """Cache the ASF orbit files."""
-        filepath = self._get_filename_cache_path(orbit_type)
-        with open(filepath, "w") as f:
-            for e in eof_list:
-                f.write(e.filename + "\n")
-
-    def _clear_cache(self, orbit_type="precise"):
-        """Clear the cache for the ASF orbit files."""
-        filepath = self._get_filename_cache_path(orbit_type)
-        os.remove(filepath)
-
-    @staticmethod
-    def _get_filename_cache_path(orbit_type="precise"):
-        fname = "{}_filenames.txt".format(orbit_type.lower())
-        return os.path.join(ASFClient.get_cache_dir(), fname)
-
-    @staticmethod
-    def get_cache_dir():
-        """Find location of directory to store .hgt downloads
-        Assuming linux, uses ~/.cache/sentineleof/
-        """
-        path = os.getenv("XDG_CACHE_HOME", os.path.expanduser("~/.cache"))
-        path = os.path.join(path, "sentineleof")  # Make subfolder for our downloads
-        print(path)
-        if not os.path.exists(path):
-            os.makedirs(path)
-        return path
+        logger.info(f"Orbit file downloaded to {output_orbit_file_path}")
+        downloaded_paths.append(output_orbit_file_path)
+    return downloaded_paths

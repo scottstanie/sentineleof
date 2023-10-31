@@ -2,7 +2,7 @@ import datetime
 
 import pytest
 
-from eof.dataspace_client import ASFClient
+from eof.asf_client import ASFClient
 
 
 @pytest.mark.skip("Local testing only for ASF")
