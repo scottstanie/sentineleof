@@ -30,9 +30,9 @@ from zipfile import ZipFile
 import requests
 from dateutil.parser import parse
 
+from .dataspace_client import ASFClient, DataspaceClient
 from .log import logger
 from .products import Sentinel, SentinelOrbit
-from .scihubclient import ASFClient, ScihubGnssClient
 
 MAX_WORKERS = 6  # workers to download in parallel (for ASF backup)
 
@@ -80,7 +80,7 @@ def download_eofs(
 
     filenames = []
     scihub_successful = False
-    client = ScihubGnssClient()
+    client = DataspaceClient()
 
     # First, check that Scihub isn't having issues
     if client.server_is_up() and not force_asf:

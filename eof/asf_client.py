@@ -9,9 +9,8 @@ from typing import Sequence
 import requests
 
 from .log import logger
-from .products import SentinelOrbit
 from .parsing import EOFLinkFinder
-
+from .products import SentinelOrbit
 
 T_ORBIT = (12 * 86400.0) / 175.0
 """Orbital period of Sentinel-1 in seconds"""
