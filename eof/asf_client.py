@@ -1,57 +1,18 @@
-"""sentinelsat based client to get orbit files form scihub.copernicu.eu."""
+"""Client to get orbit files from ASF."""
 from __future__ import annotations
 
-import operator
 import os
-from datetime import datetime, timedelta
-from typing import Sequence
+from datetime import timedelta
 
 import requests
 
 from .log import logger
 from .parsing import EOFLinkFinder
 from .products import SentinelOrbit
+from ._select_orbit import T_ORBIT, ValidityError, lastval_cover
 
-T_ORBIT = (12 * 86400.0) / 175.0
-"""Orbital period of Sentinel-1 in seconds"""
-
-QUERY_ENDPOINT = "https://catalogue.dataspace.copernicus.eu/odata/v1/Products"
-"""Default URL endpoint for the Copernicus Data Space Ecosystem (CDSE) query REST service"""
-
-AUTH_ENDPOINT = "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token"
-"""Default URL endpoint for performing user authentication with CDSE"""
-
-DOWNLOAD_ENDPOINT = "https://zipper.dataspace.copernicus.eu/odata/v1/Products"
-"""Default URL endpoint for CDSE download REST service"""
-
-
-class ValidityError(ValueError):
-    pass
-
-
-def lastval_cover(
-    t0: datetime,
-    t1: datetime,
-    data: Sequence[SentinelOrbit],
-    margin0=timedelta(seconds=T_ORBIT + 60),
-    margin1=timedelta(minutes=5),
-) -> str:
-    # Using a start margin of > 1 orbit so that the start of the orbit file will
-    # cover the ascending node crossing of the acquisition
-    candidates = [
-        item
-        for item in data
-        if item.start_time <= (t0 - margin0) and item.stop_time >= (t1 + margin1)
-    ]
-    if not candidates:
-        raise ValidityError(
-            "none of the input products completely covers the requested "
-            "time interval: [t0={}, t1={}]".format(t0, t1)
-        )
-
-    candidates.sort(key=operator.attrgetter("created_time"), reverse=True)
-
-    return candidates[0].filename
+SIGNUP_URL = "https://urs.earthdata.nasa.gov/users/new"
+"""Url to prompt user to sign up for NASA Earthdata account."""
 
 
 class ASFClient:
@@ -110,11 +71,20 @@ class ASFClient:
             "S1A": [eof for eof in eof_list if eof.mission == "S1A"],
             "S1B": [eof for eof in eof_list if eof.mission == "S1B"],
         }
+        # For precise orbits, we can have a larger front margin to ensure we
+        # cover the ascending node crossing
+        if orbit_type == "precise":
+            margin0 = timedelta(seconds=T_ORBIT + 60)
+        else:
+            margin0 = timedelta(seconds=60)
+
         remaining_orbits = []
         urls = []
         for dt, mission in zip(orbit_dts, missions):
             try:
-                filename = lastval_cover(dt, dt, mission_to_eof_list[mission])
+                filename = lastval_cover(
+                    dt, dt, mission_to_eof_list[mission], margin0=margin0
+                )
                 urls.append(self.urls[orbit_type] + filename)
             except ValidityError:
                 remaining_orbits.append((dt, mission))

@@ -1,4 +1,4 @@
-"""sentinelsat based client to get orbit files form scihub.copernicu.eu."""
+"""Client to get orbit files from dataspace.copernicus.eu ."""
 from __future__ import annotations
 
 import os
@@ -8,23 +8,23 @@ import requests
 from sentinelsat import SentinelAPI
 from sentinelsat.exceptions import ServerError
 
+from ._select_orbit import T_ORBIT, ValidityError, lastval_cover
 from .log import logger
 from .parsing import EOFLinkFinder
 from .products import Sentinel as S1Product
 from .products import SentinelOrbit
-from ._select_orbit import lastval_cover, ValidityError
 
-T_ORBIT = (12 * 86400.0) / 175.0
-"""Orbital period of Sentinel-1 in seconds"""
-
-QUERY_ENDPOINT = "https://catalogue.dataspace.copernicus.eu/odata/v1/Products"
+QUERY_URL = "https://catalogue.dataspace.copernicus.eu/odata/v1/Products"
 """Default URL endpoint for the Copernicus Data Space Ecosystem (CDSE) query REST service"""
 
-AUTH_ENDPOINT = "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token"
+AUTH_URL = "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token"
 """Default URL endpoint for performing user authentication with CDSE"""
 
-DOWNLOAD_ENDPOINT = "https://zipper.dataspace.copernicus.eu/odata/v1/Products"
+DOWNLOAD_URL = "https://zipper.dataspace.copernicus.eu/odata/v1/Products"
 """Default URL endpoint for CDSE download REST service"""
+
+SIGNUP_URL = "https://dataspace.copernicus.eu/"
+"""Url to prompt user to sign up for CDSE account."""
 
 
 class DataspaceClient:
@@ -49,8 +49,6 @@ class DataspaceClient:
         query_params = dict(
             producttype=product_type,
             platformserialidentifier=satellite_id[1:],
-            # this has weird endpoint inclusion
-            # https://github.com/sentinelsat/sentinelsat/issues/551#issuecomment-992344180
             # date=[t0, t1],
             # use the following instead
             beginposition=(None, t1),
@@ -201,7 +199,7 @@ class DataspaceClient:
 
 
 def _construct_orbit_file_query(mission_id, orbit_type, search_start, search_stop):
-    """Constructs the query used with the query endpoint URL to determine the
+    """Constructs the query used with the query URL to determine the
     available Orbit files for the given time range.
 
     Parameters
@@ -248,14 +246,13 @@ def _construct_orbit_file_query(mission_id, orbit_type, search_start, search_sto
     return query
 
 
-def query_orbit_file_service(endpoint_url, query):
-    """
-    Submits a request to the Orbit file query REST service, and returns the
+def query_orbit_file_service(url, query):
+    """Submits a request to the Orbit file query REST service, and returns the
     JSON-formatted response.
 
     Parameters
     ----------
-    endpoint_url : str
+    url : str
         The URL for the query endpoint, to which the query is appended to as
         the payload.
     query : str
@@ -282,7 +279,7 @@ def query_orbit_file_service(endpoint_url, query):
     query_params = {"$filter": query, "$orderby": "ContentDate/Start asc", "$top": 1}
 
     # Make the HTTP GET request on the endpoint URL, no credentials are required
-    response = requests.get(endpoint_url, params=query_params)
+    response = requests.get(url, params=query_params)
 
     logger.debug(f"response.url: {response.url}")
     logger.debug(f"response.status_code: {response.status_code}")
@@ -298,7 +295,7 @@ def query_orbit_file_service(endpoint_url, query):
     return query_results
 
 
-def get_access_token(endpoint_url, username, password):
+def get_access_token(username, password):
     """
     https://documentation.dataspace.copernicus.eu/APIs/Token.html
     """

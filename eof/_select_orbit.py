@@ -1,3 +1,4 @@
+"""Module for filtering/selecting from orbit query results."""
 from __future__ import annotations
 
 import operator
@@ -5,6 +6,9 @@ from datetime import datetime, timedelta
 from typing import Sequence
 
 from .products import SentinelOrbit
+
+T_ORBIT = (12 * 86400.0) / 175.0
+"""Orbital period of Sentinel-1 in seconds"""
 
 
 class OrbitSelectionError(RuntimeError):
