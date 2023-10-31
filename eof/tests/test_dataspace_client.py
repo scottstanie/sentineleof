@@ -2,14 +2,14 @@ import datetime
 
 import pytest
 
-from eof.scihubclient import ASFClient, ScihubGnssClient
 from eof.products import Sentinel
+from eof.dataspace_client import DataspaceClient
 
 
 def test_scihub_query_orbit_by_dt():
     dt = datetime.datetime(2020, 1, 1)
     mission = "S1A"
-    c = ScihubGnssClient()
+    c = DataspaceClient()
     # Restituted seems to fail for old dates...
     # Need to look into sentinelsat, or if ESA has just stopped allowing it
     results = c.query_orbit_by_dt([dt], [mission], orbit_type="precise")
@@ -24,7 +24,7 @@ def test_query_resorb_edge_case():
         "S1A_IW_SLC__1SDV_20230823T154908_20230823T154935_050004_060418_521B.zip"
     )
 
-    client = ScihubGnssClient()
+    client = DataspaceClient()
 
     results = client.query_orbit_by_dt(
         [p.start_time], [p.mission], orbit_type="restituted"

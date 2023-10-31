@@ -1,59 +1,33 @@
 """sentinelsat based client to get orbit files form scihub.copernicu.eu."""
 from __future__ import annotations
 
-import operator
 import os
 from datetime import datetime, timedelta
-from typing import Sequence
 
 import requests
 from sentinelsat import SentinelAPI
 from sentinelsat.exceptions import ServerError
 
 from .log import logger
+from .parsing import EOFLinkFinder
 from .products import Sentinel as S1Product
 from .products import SentinelOrbit
-from .parsing import EOFLinkFinder
-
+from ._select_orbit import lastval_cover, ValidityError
 
 T_ORBIT = (12 * 86400.0) / 175.0
 """Orbital period of Sentinel-1 in seconds"""
 
+QUERY_ENDPOINT = "https://catalogue.dataspace.copernicus.eu/odata/v1/Products"
+"""Default URL endpoint for the Copernicus Data Space Ecosystem (CDSE) query REST service"""
 
-class ValidityError(ValueError):
-    pass
+AUTH_ENDPOINT = "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token"
+"""Default URL endpoint for performing user authentication with CDSE"""
 
-
-def lastval_cover(
-    t0: datetime,
-    t1: datetime,
-    data: Sequence[SentinelOrbit],
-    margin0=timedelta(seconds=T_ORBIT + 60),
-    margin1=timedelta(minutes=5),
-) -> str:
-    # Using a start margin of > 1 orbit so that the start of the orbit file will
-    # cover the ascending node crossing of the acquisition
-    candidates = [
-        item
-        for item in data
-        if item.start_time <= (t0 - margin0) and item.stop_time >= (t1 + margin1)
-    ]
-    if not candidates:
-        raise ValidityError(
-            "none of the input products completely covers the requested "
-            "time interval: [t0={}, t1={}]".format(t0, t1)
-        )
-
-    candidates.sort(key=operator.attrgetter("created_time"), reverse=True)
-
-    return candidates[0].filename
+DOWNLOAD_ENDPOINT = "https://zipper.dataspace.copernicus.eu/odata/v1/Products"
+"""Default URL endpoint for CDSE download REST service"""
 
 
-class OrbitSelectionError(RuntimeError):
-    pass
-
-
-class ScihubGnssClient:
+class DataspaceClient:
     T0 = timedelta(days=1)
     T1 = timedelta(days=1)
 
@@ -205,7 +179,8 @@ class ScihubGnssClient:
         See sentinelsat.SentinelAPI.download for a detailed description
         of arguments.
         """
-        return self._api.download(uuid, **kwargs)
+        # return self._api.download(uuid, **kwargs)
+        raise NotImplementedError
 
     def download_all(self, products, **kwargs):
         """Download all the specified orbit products.
@@ -223,6 +198,110 @@ class ScihubGnssClient:
         except ServerError as e:
             logger.warning("Cannot connect to the server: %s", e)
             return False
+
+
+def _construct_orbit_file_query(mission_id, orbit_type, search_start, search_stop):
+    """Constructs the query used with the query endpoint URL to determine the
+    available Orbit files for the given time range.
+
+    Parameters
+    ----------
+    mission_id : str
+        The mission ID parsed from the SAFE file name, should always be one
+        of S1A or S1B.
+    orbit_type : str
+        String identifying the type of orbit file to query for. Should be either
+        POEORB for Precise Orbit files, or RESORB for Restituted.
+    search_start : datetime
+        The start time to use with the query in YYYYmmddTHHMMSS format.
+        Any resulting orbit files will have a starting time before this value.
+    search_stop : datetime
+        The stop time to use with the query in YYYYmmddTHHMMSS format.
+        Any resulting orbit files will have an ending time after this value.
+
+    Returns
+    -------
+    query : str
+        The Orbit file query string formatted as the query service expects.
+
+    """
+    # Set up templates that use the OData domain specific syntax expected by the
+    # query service
+    query_template = (
+        "startswith(Name,'{mission_id}') and contains(Name,'AUX_{orbit_type}') "
+        "and ContentDate/Start lt '{start_time}' and ContentDate/End gt '{stop_time}'"
+    )
+
+    # Format the query template using the values we were provided
+    query_start_date_str = search_start.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    query_stop_date_str = search_stop.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+
+    query = query_template.format(
+        start_time=query_start_date_str,
+        stop_time=query_stop_date_str,
+        mission_id=mission_id,
+        orbit_type=orbit_type,
+    )
+
+    logger.debug(f"query: {query}")
+
+    return query
+
+
+def query_orbit_file_service(endpoint_url, query):
+    """
+    Submits a request to the Orbit file query REST service, and returns the
+    JSON-formatted response.
+
+    Parameters
+    ----------
+    endpoint_url : str
+        The URL for the query endpoint, to which the query is appended to as
+        the payload.
+    query : str
+        The query for the Orbit files to find, filtered by a time range and mission
+        ID corresponding to the provided SAFE SLC archive file.
+
+    Returns
+    -------
+    query_results : list of dict
+        The list of results from a successful query. Each result should
+        be a Python dictionary containing the details of the orbit file which
+        matched the query.
+
+    Raises
+    ------
+    requests.HTTPError
+        If the request fails for any reason (HTTP return code other than 200).
+
+    References
+    ----------
+    .. [1] https://documentation.dataspace.copernicus.eu/APIs/OData.html#query-by-sensing-date
+    """
+    # Set up parameters to be included with query request
+    query_params = {"$filter": query, "$orderby": "ContentDate/Start asc", "$top": 1}
+
+    # Make the HTTP GET request on the endpoint URL, no credentials are required
+    response = requests.get(endpoint_url, params=query_params)
+
+    logger.debug(f"response.url: {response.url}")
+    logger.debug(f"response.status_code: {response.status_code}")
+
+    response.raise_for_status()
+
+    # Response should be within the text body as JSON
+    json_response = response.json()
+    logger.debug(f"json_response: {json_response}")
+
+    query_results = json_response["value"]
+
+    return query_results
+
+
+def get_access_token(endpoint_url, username, password):
+    """
+    https://documentation.dataspace.copernicus.eu/APIs/Token.html
+    """
 
 
 class ASFClient:
@@ -308,7 +387,7 @@ class ASFClient:
     def _get_cached_filenames(self, orbit_type="precise"):
         """Get the cache path for the ASF orbit files."""
         filepath = self._get_filename_cache_path(orbit_type)
-        print(f"{filepath = }")
+        logger.debug(f"ASF file path cache: {filepath = }")
         if os.path.exists(filepath):
             with open(filepath, "r") as f:
                 return [SentinelOrbit(f) for f in f.read().splitlines()]
