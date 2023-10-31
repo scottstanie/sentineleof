@@ -1,12 +1,13 @@
 import datetime
-from dateutil.parser import parse
 
 import pytest
+from dateutil.parser import parse
 
 from eof.dataspace_client import DataspaceClient
 from eof.products import Sentinel
 
 
+@pytest.mark.vcr
 def test_scihub_query_orbit_by_dt():
     dt = datetime.datetime(2020, 1, 1, tzinfo=datetime.timezone.utc)
     mission = "S1A"

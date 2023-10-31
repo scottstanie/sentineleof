@@ -5,7 +5,8 @@ import pytest
 from eof.asf_client import ASFClient
 
 
-@pytest.mark.skip("Local testing only for ASF")
+# pytest --record-mode=once test_network.py
+@pytest.mark.vcr
 def test_asf_client():
     dt = datetime.datetime(2020, 1, 1)
     mission = "S1A"
@@ -15,12 +16,13 @@ def test_asf_client():
     assert urls == [expected]
 
 
-@pytest.mark.skip("Local testing only for ASF")
-def test_asf_full_url_list(monkeypatch, tmp_path):
-    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path))
-    asfclient = ASFClient()
+@pytest.mark.vcr
+def test_asf_full_url_list(tmp_path):
+    cache_dir = tmp_path / "sentineleof"
+    cache_dir.mkdir()
+    asfclient = ASFClient(cache_dir=(tmp_path / "sentineleof"))
     urls = asfclient.get_full_eof_list()
     assert len(urls) > 0
-    assert (tmp_path / "sentineleof" / "precise_filenames.txt").exists()
+    assert (cache_dir / "precise_filenames.txt").exists()
     # Should be quick second time
     assert len(asfclient.get_full_eof_list())

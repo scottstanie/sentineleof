@@ -3,11 +3,13 @@ from __future__ import annotations
 
 import os
 from datetime import timedelta
+from typing import Optional
 
 import requests
 
 from ._auth import NASA_HOST, setup_netrc
 from ._select_orbit import T_ORBIT, ValidityError, last_valid_orbit
+from ._types import Filename
 from .log import logger
 from .parsing import EOFLinkFinder
 from .products import SentinelOrbit
@@ -22,8 +24,9 @@ class ASFClient:
     urls = {"precise": precise_url, "restituted": res_url}
     eof_lists = {"precise": None, "restituted": None}
 
-    def __init__(self):
+    def __init__(self, cache_dir: Optional[Filename] = None):
         setup_netrc(host=NASA_HOST)
+        self._cache_dir = cache_dir
 
     def get_full_eof_list(self, orbit_type="precise", max_dt=None):
         """Get the list of orbit files from the ASF server."""
@@ -129,16 +132,16 @@ class ASFClient:
         filepath = self._get_filename_cache_path(orbit_type)
         os.remove(filepath)
 
-    @staticmethod
-    def _get_filename_cache_path(orbit_type="precise"):
+    def _get_filename_cache_path(self, orbit_type="precise"):
         fname = "{}_filenames.txt".format(orbit_type.lower())
-        return os.path.join(ASFClient.get_cache_dir(), fname)
+        return os.path.join(self.get_cache_dir(), fname)
 
-    @staticmethod
-    def get_cache_dir():
+    def get_cache_dir(self):
         """Find location of directory to store .hgt downloads
         Assuming linux, uses ~/.cache/sentineleof/
         """
+        if self._cache_dir is not None:
+            return self._cache_dir
         path = os.getenv("XDG_CACHE_HOME", os.path.expanduser("~/.cache"))
         path = os.path.join(path, "sentineleof")  # Make subfolder for our downloads
         logger.debug("Cache path: %s", path)

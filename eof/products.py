@@ -61,7 +61,7 @@ class Base(object):
         Raises:
             ValueError: if filename string is invalid
         """
-        if hasattr(self, "FILE_REGEX"):
+        if not hasattr(self, "FILE_REGEX"):
             raise NotImplementedError("Must define class FILE_REGEX to parse")
 
         match = re.search(self.FILE_REGEX, str(self.filename))
