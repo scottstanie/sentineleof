@@ -49,7 +49,20 @@ from eof import download, log
     help="Optionally specify the type of orbit file to get "
     "(default: precise (POEORB), but fallback to restituted (RESORB))",
 )
-def cli(search_path, save_dir, sentinel_file, date, mission, orbit_type):
+@click.option(
+    "--force-asf",
+    is_flag=True,
+    help="Force the downloader to search ASF instead of ESA.",
+)
+def cli(
+    search_path: str,
+    save_dir: str,
+    sentinel_file: str,
+    date: str,
+    mission: str,
+    orbit_type: str,
+    force_asf: bool,
+):
     """Download Sentinel precise orbit files.
 
     Saves files to `save-dir` (default = current directory)
@@ -66,4 +79,5 @@ def cli(search_path, save_dir, sentinel_file, date, mission, orbit_type):
         mission=mission,
         date=date,
         orbit_type=orbit_type,
+        force_asf=force_asf,
     )
