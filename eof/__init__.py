@@ -1,5 +1,5 @@
 import importlib.metadata
 
-from . import download, parsing
+from . import download, parsing  # noqa
 
 __version__ = importlib.metadata.version("sentineleof")

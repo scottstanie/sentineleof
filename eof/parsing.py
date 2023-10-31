@@ -55,7 +55,6 @@ def parse_orbit(
     max_time=datetime(2100, 1, 1),
     extra_osvs=1,
 ):
-
     min_time = to_datetime(min_time)
     max_time = to_datetime(max_time)
     logger.info(

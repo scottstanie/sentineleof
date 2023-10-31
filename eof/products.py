@@ -211,7 +211,7 @@ class Sentinel(Base):
 
     @property
     def level(self):
-        """Alias for product type/level """
+        """Alias for product type/level"""
         return self.product_type
 
     @property
@@ -307,6 +307,7 @@ class SentinelOrbit(Base):
     Attributes:
         filename (str) name of the sentinel data product
     """
+
     TIME_FMT = "%Y%m%dT%H%M%S"
     FILE_REGEX = (
         r"(?P<mission>S1A|S1B)_OPER_AUX_"
@@ -332,7 +333,12 @@ class SentinelOrbit(Base):
         return self.start_time < dt < self.stop_time
 
     def __eq__(self, other):
-        return (self.mission, self.start_time, self.stop_time, self.orbit_type,) == (
+        return (
+            self.mission,
+            self.start_time,
+            self.stop_time,
+            self.orbit_type,
+        ) == (
             other.mission,
             other.start_time,
             other.stop_time,

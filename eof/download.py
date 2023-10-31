@@ -21,16 +21,18 @@ https://earth.esa.int/documents/247904/349490/GMES_Sentinels_POD_Service_File_Fo
 
 See parsers for Sentinel file naming description
 """
-import os
 import glob
-from zipfile import ZipFile
 import itertools
-import requests
+import os
 from multiprocessing.pool import ThreadPool
+from zipfile import ZipFile
+
+import requests
 from dateutil.parser import parse
-from .scihubclient import ASFClient, ScihubGnssClient
-from .products import Sentinel, SentinelOrbit
+
 from .log import logger
+from .products import Sentinel, SentinelOrbit
+from .scihubclient import ASFClient, ScihubGnssClient
 
 MAX_WORKERS = 6  # workers to download in parallel (for ASF backup)
 
