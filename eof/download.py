@@ -79,11 +79,11 @@ def download_eofs(
     orbit_dts = [parse(dt) if isinstance(dt, str) else dt for dt in orbit_dts]
 
     filenames = []
-    scihub_successful = False
-    client = DataspaceClient()
+    dataspace_successful = False
 
     # First, check that Scihub isn't having issues
-    if client.server_is_up() and not force_asf:
+    if not force_asf:
+        client = DataspaceClient()
         # try to search on scihub
         if sentinel_file:
             query = client.query_orbit_for_product(sentinel_file, orbit_type=orbit_type)
@@ -94,11 +94,11 @@ def download_eofs(
             logger.info("Attempting download from SciHub")
             result = client.download_all(query, directory_path=save_dir)
             filenames.extend(item["path"] for item in result.downloaded.values())
-            scihub_successful = True
+            dataspace_successful = True
 
     # For failures from scihub, try ASF
-    if not scihub_successful:
-        logger.warning("Scihub failed, trying ASF")
+    if not dataspace_successful:
+        logger.warning("Dataspace failed, trying ASF")
         asfclient = ASFClient()
         urls = asfclient.get_download_urls(orbit_dts, missions, orbit_type=orbit_type)
         # Download and save all links in parallel

@@ -10,6 +10,7 @@ from .log import logger
 from .parsing import EOFLinkFinder
 from .products import SentinelOrbit
 from ._select_orbit import T_ORBIT, ValidityError, lastval_cover
+from ._auth import setup_netrc, NASA_HOST
 
 SIGNUP_URL = "https://urs.earthdata.nasa.gov/users/new"
 """Url to prompt user to sign up for NASA Earthdata account."""
@@ -20,6 +21,9 @@ class ASFClient:
     res_url = "https://s1qc.asf.alaska.edu/aux_resorb/"
     urls = {"precise": precise_url, "restituted": res_url}
     eof_lists = {"precise": None, "restituted": None}
+
+    def __init__(self):
+        setup_netrc(host=NASA_HOST)
 
     def get_full_eof_list(self, orbit_type="precise", max_dt=None):
         """Get the list of orbit files from the ASF server."""

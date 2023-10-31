@@ -5,9 +5,8 @@ import os
 from datetime import datetime, timedelta
 
 import requests
-from sentinelsat import SentinelAPI
-from sentinelsat.exceptions import ServerError
 
+from ._auth import setup_netrc, DATASPACE_HOST
 from ._select_orbit import T_ORBIT, ValidityError, lastval_cover
 from .log import logger
 from .parsing import EOFLinkFinder
@@ -31,14 +30,8 @@ class DataspaceClient:
     T0 = timedelta(days=1)
     T1 = timedelta(days=1)
 
-    def __init__(
-        self,
-        user: str = "gnssguest",
-        password: str = "gnssguest",
-        api_url: str = "https://scihub.copernicus.eu/gnss/",
-        **kwargs,
-    ):
-        self._api = SentinelAPI(user=user, password=password, api_url=api_url, **kwargs)
+    def __init__(self):
+        setup_netrc(host=DATASPACE_HOST)
 
     def query_orbit(
         self, t0, t1, satellite_id: str, product_type: str = "AUX_POEORB"
@@ -172,30 +165,13 @@ class DataspaceClient:
         return query
 
     def download(self, uuid, **kwargs):
-        """Download a single orbit product.
-
-        See sentinelsat.SentinelAPI.download for a detailed description
-        of arguments.
-        """
+        """Download a single orbit product."""
         # return self._api.download(uuid, **kwargs)
         raise NotImplementedError
 
     def download_all(self, products, **kwargs):
-        """Download all the specified orbit products.
-
-        See sentinelsat.SentinelAPI.download_all for a detailed description
-        of arguments.
-        """
+        """Download all the specified orbit products."""
         return self._api.download_all(products, **kwargs)
-
-    def server_is_up(self):
-        """Ping the ESA server using sentinelsat to verify the connection."""
-        try:
-            self._api.query(producttype="AUX_POEORB", platformserialidentifier="S1A")
-            return True
-        except ServerError as e:
-            logger.warning("Cannot connect to the server: %s", e)
-            return False
 
 
 def _construct_orbit_file_query(mission_id, orbit_type, search_start, search_stop):

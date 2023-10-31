@@ -9,7 +9,7 @@ NASA_HOST = "urs.earthdata.nasa.gov"
 DATASPACE_HOST = "dataspace.copernicus.eu"
 
 
-def setup_nasa_netrc(netrc_file: Filename = "~/.netrc", host: str = NASA_HOST):
+def setup_netrc(netrc_file: Filename = "~/.netrc", host: str = NASA_HOST):
     """Prompt user for NASA/Dataspace username/password, store as attribute of ~/.netrc."""
     netrc_file = Path(netrc_file).expanduser()
     try:
