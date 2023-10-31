@@ -27,6 +27,16 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install requests click python-dateutil pytest pytest-recording
         python -m pip install .
+    - name: Setup Dummy ~/.netrc file
+      run: |
+        mkdir -p ~/.netrc
+        echo "machine urs.earthdata.nasa.gov" >> ~/.netrc
+        echo "  login asdf" >> ~/.netrc
+        echo "  password asdf" >> ~/.netrc
+        echo "machine dataspace.copernicus.eu" >> ~/.netrc
+        echo "  login asdf" >> ~/.netrc
+        echo "  password asdf" >> ~/.netrc
+        chmod 600 ~/.netrc
     - name: Test with pytest
       run: |
         python -m pytest -v --doctest-modules --ignore=eof/__main__.py
