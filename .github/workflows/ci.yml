@@ -29,7 +29,6 @@ jobs:
         python -m pip install .
     - name: Setup Dummy ~/.netrc file
       run: |
-        mkdir -p ~/.netrc
         echo "machine urs.earthdata.nasa.gov" >> ~/.netrc
         echo "  login asdf" >> ~/.netrc
         echo "  password asdf" >> ~/.netrc
