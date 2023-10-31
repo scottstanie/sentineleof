@@ -1,6 +1,8 @@
 """
 CLI tool for downloading Sentinel 1 EOF files
 """
+import logging
+
 import click
 
 from eof import download, log
@@ -54,6 +56,11 @@ from eof import download, log
     is_flag=True,
     help="Force the downloader to search ASF instead of ESA.",
 )
+@click.option(
+    "--debug",
+    is_flag=True,
+    help="Set logging level to DEBUG",
+)
 def cli(
     search_path: str,
     save_dir: str,
@@ -62,6 +69,7 @@ def cli(
     mission: str,
     orbit_type: str,
     force_asf: bool,
+    debug: bool,
 ):
     """Download Sentinel precise orbit files.
 
@@ -71,7 +79,7 @@ def cli(
     Will find both ".SAFE" and ".zip" files matching Sentinel-1 naming convention.
     With no arguments, searches current directory for Sentinel 1 products
     """
-    log._set_logger_handler()
+    log._set_logger_handler(level=logging.DEBUG if debug else logging.INFO)
     download.main(
         search_path=search_path,
         save_dir=save_dir,
