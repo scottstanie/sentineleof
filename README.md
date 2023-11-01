@@ -4,6 +4,21 @@
 
 Tool to download Sentinel 1 precise/restituted orbit files (.EOF files) for processing SLCs
 
+## (Update 2023-10-31) Changes to Sentinel-1 orbit files source
+
+The [Copernicus Scihub client has discontinued service](https://scihub.copernicus.eu/) in favor of [the new Copernicus Data Space Ecosystem](https://dataspace.copernicus.eu/).
+
+*Changes required by you to continue using this tool:*
+
+1. Register for an account with Copernicus Data Space account at https://dataspace.copernicus.eu/ (using the Loging button, which will have the option for a "Register" page)
+2. After creating the username and confirming your email, store your username/password in a `~/.netrc` file with the hostname `dataspace.copernicus.eu`:
+```
+machine dataspace.copernicus.eu
+  login MYUSERNAME
+  password MYPASSWORD
+```
+
+The backup option for downloading orbits is using the ASF mirror (which also requires a `.netrc` entry, but with `urs.earthdata.nasa.gov` as the hostname); however, the Copernicus Data Space is the preferred option.
 
 ## Setup and installation
 
@@ -20,7 +35,8 @@ conda install -c conda-forge sentineleof
 This will put the executable `eof` on your path
 
 
-If you have a bunch of Sentinel 1 zip files (or unzipped SAFE folders), you can simply run
+
+After setting up your `~/.netrc` (see above), if you have a bunch of Sentinel 1 zip files (or unzipped SAFE folders), you can simply run
 
 ```bash
 eof
