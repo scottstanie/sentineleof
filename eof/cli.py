@@ -65,7 +65,7 @@ from eof._auth import NASA_HOST, DATASPACE_HOST, setup_netrc
     help="Set logging level to DEBUG",
 )
 @click.option(
-    "--cdse-username",
+    "--cdse-user",
     help="Copernicus Data Space Ecosystem username. "
     "If not provided the program asks for it",
 )
@@ -75,7 +75,7 @@ from eof._auth import NASA_HOST, DATASPACE_HOST, setup_netrc
     "If not provided the program asks for it",
 )
 @click.option(
-    "--asf-username",
+    "--asf-user",
     help="ASF username. If not provided the program asks for it",
 )
 @click.option(
@@ -83,7 +83,7 @@ from eof._auth import NASA_HOST, DATASPACE_HOST, setup_netrc
     help="ASF password. If not provided the program asks for it",
 )
 @click.option(
-    "--setup-netrc",
+    "--update-netrc",
     is_flag=True,
     help="save credentials provided interactively in the ~/.netrc file if necessary",
 )
@@ -98,9 +98,9 @@ def cli(
     debug: bool,
     asf_user: str = "",
     asf_password: str = "",
-    cdse_username: str = "",
+    cdse_user: str = "",
     cdse_password: str = "",
-    save_credentials: bool = False,
+    update_netrc: bool = False,
 ):
     """Download Sentinel precise orbit files.
 
@@ -111,11 +111,11 @@ def cli(
     With no arguments, searches current directory for Sentinel 1 products
     """
     log._set_logger_handler(level=logging.DEBUG if debug else logging.INFO)
-    dryrun = not save_credantials
+    dryrun = not update_netrc
     if not (asf_user and asf_password):
-        setup_netrc(host=NASA_HOST, dryrun=dryrun)
+        asf_user, asf_password = setup_netrc(host=NASA_HOST, dryrun=dryrun)
     if not (cdse_user and cdse_password):
-        setup_netrc(host=DATASPACE_HOST, dryrun=dryrun)
+        cdse_user, cdse_password = setup_netrc(host=DATASPACE_HOST, dryrun=dryrun)
 
     download.main(
         search_path=search_path,
