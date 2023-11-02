@@ -98,7 +98,7 @@ def cli(
     debug: bool,
     asf_user: str = "",
     asf_password: str = "",
-    cdse_user: str = "",
+    cdse_username: str = "",
     cdse_password: str = "",
     save_credentials: bool = False,
 ):
