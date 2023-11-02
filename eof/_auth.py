@@ -6,12 +6,27 @@ import os
 from pathlib import Path
 
 from ._types import Filename
+from .log import logger as _logger
 
 NASA_HOST = "urs.earthdata.nasa.gov"
 DATASPACE_HOST = "dataspace.copernicus.eu"
 
 
-def setup_netrc(netrc_file: Filename = "~/.netrc", host: str = NASA_HOST):
+def check_netrc(netrc_file: Filename = "~/.netrc"):
+    """Chech that the netrc file exists and has the proper permissions."""
+    if not _file_is_0600(netrc_file):
+        # User has a netrc file, but it's not set up correctly
+        _logger.warning(
+            f"Your netrc file ('{netrc_file}') does not have the "
+            f"correct permissions: 0600* (read/write for user only).",
+        )
+
+
+def setup_netrc(
+    netrc_file: Filename = "~/.netrc",
+    host: str = NASA_HOST,
+    dryrun: bool = False,
+):
     """Prompt user for NASA/Dataspace username/password, store as attribute of ~/.netrc."""
     netrc_file = Path(netrc_file).expanduser()
     try:
@@ -19,35 +34,49 @@ def setup_netrc(netrc_file: Filename = "~/.netrc", host: str = NASA_HOST):
         has_correct_permission = _file_is_0600(netrc_file)
         if not has_correct_permission:
             # User has a netrc file, but it's not set up correctly
-            print(
-                "Your ~/.netrc file does not have the correct"
-                " permissions.\n*Changing permissions to 0600*"
-                " (read/write for user only).",
-            )
-            os.chmod(netrc_file, 0o600)
+            if dryrun:
+                _logger.warning(
+                    f"Your netrc file ('{netrc_file}') does not have the "
+                    f"correct permissions: 0600* (read/write for user only).",
+                )
+            else:
+                _logger.warning(
+                    "Your ~/.netrc file does not have the correct"
+                    " permissions.\n*Changing permissions to 0600*"
+                    " (read/write for user only).",
+                )
+                os.chmod(netrc_file, 0o600)
         # Check account exists, as well is having username and password
+        authenticator = n.authenticators(host)
+        if authenticator is not None:
+            username, _, password = authenticator
+
         _has_existing_entry = (
             host in n.hosts
-            and n.authenticators(host)[0]  # type: ignore
-            and n.authenticators(host)[2]  # type: ignore
+            and username  # type: ignore
+            and password  # type: ignore
         )
         if _has_existing_entry:
-            return
+            return username, password
     except FileNotFoundError:
-        # User doesn't have a netrc file, make one
-        print("No ~/.netrc file found, creating one.")
-        Path(netrc_file).write_text("")
-        n = netrc.netrc(netrc_file)
+        if not dryrun:
+            # User doesn't have a netrc file, make one
+            print("No ~/.netrc file found, creating one.")
+            Path(netrc_file).write_text("")
+            n = netrc.netrc(netrc_file)
 
     username, password = _get_username_pass(host)
-    # Add account to netrc file
-    n.hosts[host] = (username, None, password)
-    print(f"Saving credentials to {netrc_file} (machine={host}).")
-    with open(netrc_file, "w") as f:
-        f.write(str(n))
-    # Set permissions to 0600 (read/write for user only)
-    # https://www.ibm.com/docs/en/aix/7.1?topic=formats-netrc-file-format-tcpip
-    os.chmod(netrc_file, 0o600)
+    if not dryrun:
+        # Add account to netrc file
+        n.hosts[host] = (username, None, password)
+        print(f"Saving credentials to {netrc_file} (machine={host}).")
+        with open(netrc_file, "w") as f:
+            f.write(str(n))
+        # Set permissions to 0600 (read/write for user only)
+        # https://www.ibm.com/docs/en/aix/7.1?topic=formats-netrc-file-format-tcpip
+        os.chmod(netrc_file, 0o600)
+
+    return username, password
 
 
 def _file_is_0600(filename: Filename):

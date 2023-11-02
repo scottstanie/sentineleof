@@ -46,9 +46,11 @@ def download_eofs(
     sentinel_file=None,
     save_dir=".",
     orbit_type="precise",
-    force_asf=False,
-    asf_user="",
-    asf_password="",
+    force_asf: bool = False,
+    asf_user: str = "",
+    asf_password: str = "",
+    cdse_user: str = "",
+    cdse_password: str = "",
 ):
     """Downloads and saves EOF files for specific dates
 
@@ -86,7 +88,7 @@ def download_eofs(
 
     # First, check that Scihub isn't having issues
     if not force_asf:
-        client = DataspaceClient()
+        client = DataspaceClient(username=cdse_user, password=cdse_password)
         # try to search on scihub
         if sentinel_file:
             query = client.query_orbit_for_product(sentinel_file, orbit_type=orbit_type)
@@ -101,7 +103,14 @@ def download_eofs(
 
     # For failures from scihub, try ASF
     if not dataspace_successful:
+        from ._auth import NASA_HOST, get_netrc_credentials
+
         logger.warning("Dataspace failed, trying ASF")
+
+        if not (asf_user and asf_password):
+            logger.debug("Get credentials form netrc")
+            asf_user, asf_password = get_netrc_credentials(NASA_HOST)
+
         asfclient = ASFClient()
         urls = asfclient.get_download_urls(orbit_dts, missions, orbit_type=orbit_type)
         # Download and save all links in parallel
@@ -231,9 +240,11 @@ def main(
     mission=None,
     date=None,
     orbit_type="precise",
-    force_asf=False,
-    asf_user="",
-    asf_password="",
+    force_asf: bool = False,
+    asf_user: str = "",
+    asf_password: str = "",
+    cdse_user: str = "",
+    cdse_password: str = "",
 ):
     """Function used for entry point to download eofs"""
 
@@ -275,4 +286,6 @@ def main(
         force_asf=force_asf,
         asf_user=asf_user,
         asf_password=asf_password,
+        cdse_user=cdse_user,
+        cdse_password=cdse_password,
     )
