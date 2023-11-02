@@ -100,7 +100,7 @@ def cli(
     asf_password: str = "",
     cdse_user: str = "",
     cdse_password: str = "",
-    save_credantials: bool = False,
+    save_credentials: bool = False,
 ):
     """Download Sentinel precise orbit files.
 
