@@ -7,7 +7,6 @@ from typing import Optional
 
 import requests
 
-from ._auth import NASA_HOST, setup_netrc
 from ._select_orbit import T_ORBIT, ValidityError, last_valid_orbit
 from ._types import Filename
 from .log import logger
@@ -25,7 +24,6 @@ class ASFClient:
     eof_lists = {"precise": None, "restituted": None}
 
     def __init__(self, cache_dir: Optional[Filename] = None):
-        setup_netrc(host=NASA_HOST)
         self._cache_dir = cache_dir
 
     def get_full_eof_list(self, orbit_type="precise", max_dt=None):

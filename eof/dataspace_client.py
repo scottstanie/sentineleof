@@ -6,7 +6,7 @@ from pathlib import Path
 
 import requests
 
-from ._auth import DATASPACE_HOST, get_netrc_credentials, setup_netrc
+from ._auth import DATASPACE_HOST, get_netrc_credentials
 from ._select_orbit import T_ORBIT
 from ._types import Filename
 from .log import logger
@@ -29,8 +29,9 @@ class DataspaceClient:
     T0 = timedelta(seconds=T_ORBIT + 60)
     T1 = timedelta(seconds=60)
 
-    def __init__(self):
-        setup_netrc(host=DATASPACE_HOST)
+    def __init__(self, username: str = "", password: str = ""):
+        self._username = username
+        self._password = password
 
     def query_orbit(
         self,
@@ -151,7 +152,12 @@ class DataspaceClient:
 
     def download_all(self, query_results: list[dict], output_directory: Filename):
         """Download all the specified orbit products."""
-        return download_all(query_results, output_directory=output_directory)
+        return download_all(
+            query_results,
+            output_directory=output_directory,
+            username=self._username,
+            password=self._password,
+        )
 
 
 def _construct_orbit_file_query(
@@ -249,12 +255,14 @@ def query_orbit_file_service(query: str) -> list[dict]:
     return query_results
 
 
-def get_access_token():
+def get_access_token(username, password):
     """Get an access token for the Copernicus Data Space Ecosystem (CDSE) API.
 
     Code from https://documentation.dataspace.copernicus.eu/APIs/Token.html
     """
-    username, password = get_netrc_credentials(DATASPACE_HOST)
+    if not (username and password):
+        logger.debug("Get credentials form netrc")
+        username, password = get_netrc_credentials(DATASPACE_HOST)
     data = {
         "client_id": "cdse-public",
         "username": username,
@@ -338,7 +346,12 @@ def download_orbit_file(
     return output_orbit_file_path
 
 
-def download_all(query_results: list[dict], output_directory: Filename) -> list[Path]:
+def download_all(
+    query_results: list[dict],
+    output_directory: Filename,
+    username: str = "",
+    password: str = "",
+) -> list[Path]:
     """Download all the specified orbit products.
 
     Parameters
@@ -347,6 +360,11 @@ def download_all(query_results: list[dict], output_directory: Filename) -> list[
         list of results from the query
     output_directory : str | Path
         Directory to save the orbit files to.
+    username : str
+        CDSE username
+    password : str
+        CDSE password
+
     """
     downloaded_paths: list[Path] = []
     # Select an appropriate orbit file from the list returned from the query
@@ -354,7 +372,7 @@ def download_all(query_results: list[dict], output_directory: Filename) -> list[
     #     query_results, start_time, stop_time
     # )
     # Obtain an access token the download request from the provided credentials
-    access_token = get_access_token()
+    access_token = get_access_token(username, password)
     for query_result in query_results:
         query_result = query_results[0]
         orbit_file_name = query_result["Name"]
