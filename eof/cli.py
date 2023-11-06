@@ -83,6 +83,11 @@ from eof._auth import NASA_HOST, DATASPACE_HOST, setup_netrc
     help="ASF password. If not provided the program asks for it",
 )
 @click.option(
+    "--ask-password",
+    is_flag=True,
+    help="ask for passwords interactively if needed",
+)
+@click.option(
     "--update-netrc",
     is_flag=True,
     help="save credentials provided interactively in the ~/.netrc file if necessary",
@@ -100,6 +105,7 @@ def cli(
     asf_password: str = "",
     cdse_user: str = "",
     cdse_password: str = "",
+    ask_password: bool = False,
     update_netrc: bool = False,
 ):
     """Download Sentinel precise orbit files.
@@ -111,11 +117,12 @@ def cli(
     With no arguments, searches current directory for Sentinel 1 products
     """
     log._set_logger_handler(level=logging.DEBUG if debug else logging.INFO)
-    dryrun = not update_netrc
-    if not (asf_user and asf_password):
-        asf_user, asf_password = setup_netrc(host=NASA_HOST, dryrun=dryrun)
-    if not (cdse_user and cdse_password):
-        cdse_user, cdse_password = setup_netrc(host=DATASPACE_HOST, dryrun=dryrun)
+    if ask_password:
+        dryrun = not update_netrc
+        if not force_asf and not (cdse_user and cdse_password):
+            cdse_user, cdse_password = setup_netrc(host=DATASPACE_HOST, dryrun=dryrun)
+        if not (cdse_user and cdse_password) and not (asf_user and asf_password):
+            asf_user, asf_password = setup_netrc(host=NASA_HOST, dryrun=dryrun)
 
     download.main(
         search_path=search_path,
