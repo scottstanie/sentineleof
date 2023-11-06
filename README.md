@@ -6,9 +6,11 @@ Tool to download Sentinel 1 precise/restituted orbit files (.EOF files) for proc
 
 ## (Update 2023-10-31) Changes to Sentinel-1 orbit files source
 
-The [Copernicus Scihub client has discontinued service](https://scihub.copernicus.eu/) in favor of [the new Copernicus Data Space Ecosystem](https://dataspace.copernicus.eu/).
+The [Copernicus Scihub client has discontinued service](https://scihub.copernicus.eu/) in favor of [the new Copernicus Data Space Ecosystem](https://dataspace.copernicus.eu/). The new service no longer allows anonymous public downloads (using the `gnssuser`), which means you must register for either a Dataspace account (to use the CDSE data) or a NASA Earthdata account (to use the orbits provided by ASF).
 
 *Changes required by you to continue using this tool:*
+
+Option 1: Register for CDSE
 
 1. Register for an account with Copernicus Data Space account at https://dataspace.copernicus.eu/ (using the Loging button, which will have the option for a "Register" page)
 2. After creating the username and confirming your email, store your username/password in a `~/.netrc` file with the hostname `dataspace.copernicus.eu`:
@@ -18,7 +20,15 @@ machine dataspace.copernicus.eu
   password MYPASSWORD
 ```
 
-The backup option for downloading orbits is using the ASF mirror (which also requires a `.netrc` entry, but with `urs.earthdata.nasa.gov` as the hostname); however, the Copernicus Data Space is the preferred option.
+Option 2: Register for NASA Earthdata
+
+1. Register for an account with NASA Earthdata at https://urs.earthdata.nasa.gov/users/new
+2. After creating the username and confirming your email, store your username/password in a `~/.netrc` file with the hostname `urs.earthdata.nasa.gov`:
+```
+machine urs.earthdata.nasa.gov
+  login MYUSERNAME
+  password MYPASSWORD
+```
 
 ## Setup and installation
 
@@ -33,8 +43,6 @@ conda install -c conda-forge sentineleof
 ```
 
 This will put the executable `eof` on your path
-
-
 
 After setting up your `~/.netrc` (see above), if you have a bunch of Sentinel 1 zip files (or unzipped SAFE folders), you can simply run
 
