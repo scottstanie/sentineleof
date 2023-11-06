@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 from datetime import timedelta
+from pathlib import Path
 from typing import Optional
 from zipfile import ZipFile
 
@@ -180,7 +181,7 @@ class ASFClient:
             os.makedirs(path)
         return path
 
-    def _download_and_write(self, url, save_dir="."):
+    def _download_and_write(self, url, save_dir=".") -> Path:
         """Wrapper function to run the link downloading in parallel
 
         Args:
@@ -188,12 +189,12 @@ class ASFClient:
             save_dir (str): directory to save the EOF files into
 
         Returns:
-            list[str]: Filenames to which the orbit files have been saved
+            Path: Filename to saved orbit file
         """
-        fname = os.path.join(save_dir, url.split("/")[-1])
+        fname = Path(save_dir) / url.split("/")[-1]
         if os.path.isfile(fname):
             logger.info("%s already exists, skipping download.", url)
-            return [fname]
+            return fname
 
         logger.info("Downloading %s", url)
         get_function = self.session.get if self.session is not None else requests.get
@@ -214,16 +215,16 @@ class ASFClient:
         logger.info("Saving to %s", fname)
         with open(fname, "wb") as f:
             f.write(response.content)
-        if fname.endswith(".zip"):
+        if fname.suffix == ".zip":
             ASFClient._extract_zip(fname, save_dir=save_dir)
             # Pass the unzipped file ending in ".EOF", not the ".zip"
-            fname = fname.replace(".zip", "")
+            fname = fname.with_suffix("")
         return fname
 
     @staticmethod
-    def _extract_zip(fname_zipped, save_dir=None, delete=True):
+    def _extract_zip(fname_zipped: Path, save_dir=None, delete=True):
         if save_dir is None:
-            save_dir = os.path.dirname(fname_zipped)
+            save_dir = fname_zipped.parent
         with ZipFile(fname_zipped, "r") as zip_ref:
             # Extract the .EOF to the same direction as the .zip
             zip_ref.extractall(path=save_dir)
@@ -232,9 +233,9 @@ class ASFClient:
             zipped = zip_ref.namelist()[0]
             zipped_dir = os.path.dirname(zipped)
             if zipped_dir:
-                no_subdir = os.path.join(save_dir, os.path.split(zipped)[1])
-                os.rename(os.path.join(save_dir, zipped), no_subdir)
-                os.rmdir(os.path.join(save_dir, zipped_dir))
+                no_subdir = save_dir / os.path.split(zipped)[1]
+                os.rename((save_dir / zipped), no_subdir)
+                os.rmdir((save_dir / zipped_dir))
         if delete:
             os.remove(fname_zipped)
 

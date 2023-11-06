@@ -393,7 +393,6 @@ def download_all(
     # Obtain an access token the download request from the provided credentials
     access_token = get_access_token(username, password)
     for query_result in query_results:
-        query_result = query_results[0]
         orbit_file_name = query_result["Name"]
         orbit_file_request_id = query_result["Id"]
 

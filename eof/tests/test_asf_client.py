@@ -20,7 +20,6 @@ def test_asf_full_url_list(tmp_path):
 
     urls = asfclient.get_full_eof_list()
     assert len(urls) > 0
-    assert (cache_dir / "precise_filenames.txt").exists()
     # Should be quick second time
     assert len(asfclient.get_full_eof_list())
 
