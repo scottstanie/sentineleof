@@ -4,9 +4,11 @@ from __future__ import annotations
 import os
 from datetime import timedelta
 from typing import Optional
+from zipfile import ZipFile
 
 import requests
 
+from ._auth import NASA_HOST, get_netrc_credentials
 from ._select_orbit import T_ORBIT, ValidityError, last_valid_orbit
 from ._types import Filename
 from .log import logger
@@ -18,13 +20,44 @@ SIGNUP_URL = "https://urs.earthdata.nasa.gov/users/new"
 
 
 class ASFClient:
+    auth_url = (
+        "https://urs.earthdata.nasa.gov/oauth/authorize?response_type=code&"
+        "client_id=BO_n7nTIlMljdvU6kRRB3g&redirect_uri=https://auth.asf.alaska.edu/login"
+    )
+
     precise_url = "https://s1qc.asf.alaska.edu/aux_poeorb/"
     res_url = "https://s1qc.asf.alaska.edu/aux_resorb/"
     urls = {"precise": precise_url, "restituted": res_url}
     eof_lists = {"precise": None, "restituted": None}
 
-    def __init__(self, cache_dir: Optional[Filename] = None):
+    def __init__(
+        self,
+        cache_dir: Optional[Filename] = None,
+        username: str = "",
+        password: str = "",
+    ):
         self._cache_dir = cache_dir
+        if username and password:
+            self.username = username
+            self.password = password
+        else:
+            logger.debug("Get credentials form netrc")
+            self.username = ""
+            self.password = ""
+            try:
+                self.username, self.password = get_netrc_credentials(NASA_HOST)
+            except FileNotFoundError:
+                logger.warning("No netrc file found.")
+            except ValueError as e:
+                if NASA_HOST not in e.args[0]:
+                    raise e
+                logger.warning(
+                    f"No NASA Earthdata credentials found in netrc file. Please create one using {SIGNUP_URL}"
+                )
+
+        self.session: Optional[requests.Session] = None
+        if self.username and self.password:
+            self.session = self.get_authenticated_session()
 
     def get_full_eof_list(self, orbit_type="precise", max_dt=None):
         """Get the list of orbit files from the ASF server."""
@@ -146,3 +179,77 @@ class ASFClient:
         if not os.path.exists(path):
             os.makedirs(path)
         return path
+
+    def _download_and_write(self, url, save_dir="."):
+        """Wrapper function to run the link downloading in parallel
+
+        Args:
+            url (str): url of orbit file to download
+            save_dir (str): directory to save the EOF files into
+
+        Returns:
+            list[str]: Filenames to which the orbit files have been saved
+        """
+        fname = os.path.join(save_dir, url.split("/")[-1])
+        if os.path.isfile(fname):
+            logger.info("%s already exists, skipping download.", url)
+            return [fname]
+
+        logger.info("Downloading %s", url)
+        get_function = self.session.get if self.session is not None else requests.get
+        try:
+            response = get_function(url)
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            logger.warning(e)
+
+            login_url = self.auth_url + f"&state={url}"
+            logger.warning(
+                "Failed to download %s. Trying URS login url: %s", url, login_url
+            )
+            # Add credentials
+            response = get_function(login_url, auth=(self.username, self.password))
+            response.raise_for_status()
+
+        logger.info("Saving to %s", fname)
+        with open(fname, "wb") as f:
+            f.write(response.content)
+        if fname.endswith(".zip"):
+            ASFClient._extract_zip(fname, save_dir=save_dir)
+            # Pass the unzipped file ending in ".EOF", not the ".zip"
+            fname = fname.replace(".zip", "")
+        return fname
+
+    @staticmethod
+    def _extract_zip(fname_zipped, save_dir=None, delete=True):
+        if save_dir is None:
+            save_dir = os.path.dirname(fname_zipped)
+        with ZipFile(fname_zipped, "r") as zip_ref:
+            # Extract the .EOF to the same direction as the .zip
+            zip_ref.extractall(path=save_dir)
+
+            # check that there's not a nested zip structure
+            zipped = zip_ref.namelist()[0]
+            zipped_dir = os.path.dirname(zipped)
+            if zipped_dir:
+                no_subdir = os.path.join(save_dir, os.path.split(zipped)[1])
+                os.rename(os.path.join(save_dir, zipped), no_subdir)
+                os.rmdir(os.path.join(save_dir, zipped_dir))
+        if delete:
+            os.remove(fname_zipped)
+
+    def get_authenticated_session(self) -> requests.Session:
+        """Get an authenticated `requests.Session` using earthdata credentials.
+
+        Fuller example here:
+        https://github.com/ASFHyP3/hyp3-sdk/blob/ec72fcdf944d676d5c8c94850d378d3557115ac0/src/hyp3_sdk/util.py#L67C8-L67C8
+
+        Returns
+        -------
+        requests.Session
+            Authenticated session
+        """
+        s = requests.Session()
+        response = s.get(self.auth_url, auth=(self.username, self.password))
+        response.raise_for_status()
+        return s
