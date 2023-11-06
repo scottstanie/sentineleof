@@ -38,14 +38,14 @@ class ASFClient:
     ):
         self._cache_dir = cache_dir
         if username and password:
-            self.username = username
-            self.password = password
+            self._username = username
+            self._password = password
         else:
             logger.debug("Get credentials form netrc")
-            self.username = ""
-            self.password = ""
+            self._username = ""
+            self._password = ""
             try:
-                self.username, self.password = get_netrc_credentials(NASA_HOST)
+                self._username, self._password = get_netrc_credentials(NASA_HOST)
             except FileNotFoundError:
                 logger.warning("No netrc file found.")
             except ValueError as e:
@@ -56,7 +56,7 @@ class ASFClient:
                 )
 
         self.session: Optional[requests.Session] = None
-        if self.username and self.password:
+        if self._username and self._password:
             self.session = self.get_authenticated_session()
 
     def get_full_eof_list(self, orbit_type="precise", max_dt=None):
@@ -208,7 +208,7 @@ class ASFClient:
                 "Failed to download %s. Trying URS login url: %s", url, login_url
             )
             # Add credentials
-            response = get_function(login_url, auth=(self.username, self.password))
+            response = get_function(login_url, auth=(self._username, self._password))
             response.raise_for_status()
 
         logger.info("Saving to %s", fname)
@@ -250,6 +250,6 @@ class ASFClient:
             Authenticated session
         """
         s = requests.Session()
-        response = s.get(self.auth_url, auth=(self.username, self.password))
+        response = s.get(self.auth_url, auth=(self._username, self._password))
         response.raise_for_status()
         return s
