@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Optional
 
 import requests
 
@@ -30,6 +31,19 @@ class DataspaceClient:
     T1 = timedelta(seconds=60)
 
     def __init__(self, username: str = "", password: str = ""):
+        if not (username and password):
+            logger.debug("Get credentials form netrc")
+            try:
+                username, password = get_netrc_credentials(DATASPACE_HOST)
+            except FileNotFoundError:
+                logger.warning("No netrc file found.")
+            except ValueError as e:
+                if DATASPACE_HOST not in e.args[0]:
+                    raise e
+                logger.warning(
+                    f"No CDSE credentials found in netrc file. Please create one using {SIGNUP_URL}"
+                )
+
         self._username = username
         self._password = password
 
@@ -255,14 +269,19 @@ def query_orbit_file_service(query: str) -> list[dict]:
     return query_results
 
 
-def get_access_token(username, password):
+def get_access_token(username, password) -> Optional[str]:
     """Get an access token for the Copernicus Data Space Ecosystem (CDSE) API.
 
     Code from https://documentation.dataspace.copernicus.eu/APIs/Token.html
     """
     if not (username and password):
         logger.debug("Get credentials form netrc")
-        username, password = get_netrc_credentials(DATASPACE_HOST)
+        try:
+            username, password = get_netrc_credentials(DATASPACE_HOST)
+        except FileNotFoundError:
+            logger.warning("No netrc file found.")
+            return None
+
     data = {
         "client_id": "cdse-public",
         "username": username,
