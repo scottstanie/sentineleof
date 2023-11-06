@@ -27,6 +27,7 @@ import glob
 import itertools
 import os
 from multiprocessing.pool import ThreadPool
+from pathlib import Path
 
 from dateutil.parser import parse
 
@@ -49,7 +50,8 @@ def download_eofs(
     asf_password: str = "",
     cdse_user: str = "",
     cdse_password: str = "",
-):
+    max_workers: int = MAX_WORKERS,
+) -> list[Path]:
     """Downloads and saves EOF files for specific dates
 
     Args:
@@ -112,7 +114,7 @@ def download_eofs(
         asf_client = ASFClient(username=asf_user, password=asf_password)
         urls = asf_client.get_download_urls(orbit_dts, missions, orbit_type=orbit_type)
         # Download and save all links in parallel
-        pool = ThreadPool(processes=MAX_WORKERS)
+        pool = ThreadPool(processes=max_workers)
         result_url_dict = {
             pool.apply_async(
                 asf_client._download_and_write,
@@ -122,12 +124,12 @@ def download_eofs(
         }
 
         for result, url in result_url_dict.items():
-            cur_filenames = result.get()
-            if cur_filenames is None:
+            cur_filename = result.get()
+            if cur_filename is None:
                 logger.error("Failed to download orbit for %s", url)
             else:
-                logger.info("Finished %s, saved to %s", url, cur_filenames)
-                filenames.append(cur_filenames)
+                logger.info("Finished %s, saved to %s", url, cur_filename)
+                filenames.append(cur_filename)
 
     return filenames
 
@@ -197,6 +199,7 @@ def main(
     asf_password: str = "",
     cdse_user: str = "",
     cdse_password: str = "",
+    max_workers: int = MAX_WORKERS,
 ):
     """Function used for entry point to download eofs"""
 
@@ -240,4 +243,5 @@ def main(
         asf_password=asf_password,
         cdse_user=cdse_user,
         cdse_password=cdse_password,
+        max_workers=max_workers,
     )
