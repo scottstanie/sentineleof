@@ -27,9 +27,7 @@ import glob
 import itertools
 import os
 from multiprocessing.pool import ThreadPool
-from zipfile import ZipFile
 
-import requests
 from dateutil.parser import parse
 
 from .asf_client import ASFClient
@@ -89,35 +87,36 @@ def download_eofs(
     # First, check that Scihub isn't having issues
     if not force_asf:
         client = DataspaceClient(username=cdse_user, password=cdse_password)
-        # try to search on scihub
-        if sentinel_file:
-            query = client.query_orbit_for_product(sentinel_file, orbit_type=orbit_type)
-        else:
-            query = client.query_orbit_by_dt(orbit_dts, missions, orbit_type=orbit_type)
+        if client._username and client._password:
+            # try to search on scihub
+            if sentinel_file:
+                query = client.query_orbit_for_product(
+                    sentinel_file, orbit_type=orbit_type
+                )
+            else:
+                query = client.query_orbit_by_dt(
+                    orbit_dts, missions, orbit_type=orbit_type
+                )
 
-        if query:
-            logger.info("Attempting download from SciHub")
-            results = client.download_all(query, output_directory=save_dir)
-            filenames.extend(results)
-            dataspace_successful = True
+            if query:
+                logger.info("Attempting download from SciHub")
+                results = client.download_all(query, output_directory=save_dir)
+                filenames.extend(results)
+                dataspace_successful = True
 
     # For failures from scihub, try ASF
     if not dataspace_successful:
-        from ._auth import NASA_HOST, get_netrc_credentials
+        if not force_asf:
+            logger.warning("Dataspace failed, trying ASF")
 
-        logger.warning("Dataspace failed, trying ASF")
-
-        if not (asf_user and asf_password):
-            logger.debug("Get credentials form netrc")
-            asf_user, asf_password = get_netrc_credentials(NASA_HOST)
-
-        asfclient = ASFClient()
-        urls = asfclient.get_download_urls(orbit_dts, missions, orbit_type=orbit_type)
+        asf_client = ASFClient(username=asf_user, password=asf_password)
+        urls = asf_client.get_download_urls(orbit_dts, missions, orbit_type=orbit_type)
         # Download and save all links in parallel
         pool = ThreadPool(processes=MAX_WORKERS)
         result_url_dict = {
             pool.apply_async(
-                _download_and_write, args=[url, save_dir, asf_user, asf_password]
+                asf_client._download_and_write,
+                args=[url, save_dir],
             ): url
             for url in urls
         }
@@ -131,57 +130,6 @@ def download_eofs(
                 filenames.append(cur_filenames)
 
     return filenames
-
-
-def _download_and_write(url, save_dir=".", asf_user="", asf_password=""):
-    """Wrapper function to run the link downloading in parallel
-
-    Args:
-        url (str): url of orbit file to download
-        save_dir (str): directory to save the EOF files into
-
-    Returns:
-        list[str]: Filenames to which the orbit files have been saved
-    """
-    fname = os.path.join(save_dir, url.split("/")[-1])
-    if os.path.isfile(fname):
-        logger.info("%s already exists, skipping download.", url)
-        return [fname]
-
-    logger.info("Downloading %s", url)
-    login_url = (
-        "https://urs.earthdata.nasa.gov/oauth/authorize?response_type=code"
-        f"&client_id=BO_n7nTIlMljdvU6kRRB3g&redirect_uri=https://auth.asf.alaska.edu/login&state={url}"
-    )
-    # Add credentials
-    response = requests.get(login_url, auth=(asf_user, asf_password))
-    response.raise_for_status()
-    logger.info("Saving to %s", fname)
-    with open(fname, "wb") as f:
-        f.write(response.content)
-    if fname.endswith(".zip"):
-        _extract_zip(fname, save_dir=save_dir)
-        # Pass the unzipped file ending in ".EOF", not the ".zip"
-        fname = fname.replace(".zip", "")
-    return fname
-
-
-def _extract_zip(fname_zipped, save_dir=None, delete=True):
-    if save_dir is None:
-        save_dir = os.path.dirname(fname_zipped)
-    with ZipFile(fname_zipped, "r") as zip_ref:
-        # Extract the .EOF to the same direction as the .zip
-        zip_ref.extractall(path=save_dir)
-
-        # check that there's not a nested zip structure
-        zipped = zip_ref.namelist()[0]
-        zipped_dir = os.path.dirname(zipped)
-        if zipped_dir:
-            no_subdir = os.path.join(save_dir, os.path.split(zipped)[1])
-            os.rename(os.path.join(save_dir, zipped), no_subdir)
-            os.rmdir(os.path.join(save_dir, zipped_dir))
-    if delete:
-        os.remove(fname_zipped)
 
 
 def find_current_eofs(cur_path):
