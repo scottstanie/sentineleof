@@ -149,8 +149,12 @@ def _download_and_write(url, save_dir=".", asf_user="", asf_password=""):
         return [fname]
 
     logger.info("Downloading %s", url)
+    login_url = (
+        "https://urs.earthdata.nasa.gov/oauth/authorize?response_type=code"
+        f"&client_id=BO_n7nTIlMljdvU6kRRB3g&redirect_uri=https://auth.asf.alaska.edu/login&state={url}"
+    )
     # Add credentials
-    response = requests.get(url, auth=(asf_user, asf_password))
+    response = requests.get(login_url, auth=(asf_user, asf_password))
     response.raise_for_status()
     logger.info("Saving to %s", fname)
     with open(fname, "wb") as f:
