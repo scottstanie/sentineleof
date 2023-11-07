@@ -1,4 +1,15 @@
 [![Build](https://github.com/scottstanie/sentineleof/actions/workflows/ci.yml/badge.svg)](https://github.com/scottstanie/sentineleof/actions/workflows/ci.yml)
+[![PyPI version][pypi-version]][pypi-link]
+[![Conda-Forge][conda-badge]][conda-link]
+[![PyPI platforms][pypi-platforms]][pypi-link]
+
+<!-- prettier-ignore-start -->
+[conda-badge]:              https://img.shields.io/conda/vn/conda-forge/sentineleof
+[conda-link]:               https://github.com/conda-forge/sentineleof-feedstock
+[pypi-link]:                https://pypi.org/project/sentineleof/
+[pypi-platforms]:           https://img.shields.io/pypi/pyversions/sentineleof
+[pypi-version]:             https://img.shields.io/pypi/v/sentineleof
+<!-- prettier-ignore-end -->
 
 # Sentinel EOF
 
