@@ -113,7 +113,9 @@ def download_eofs(
                     assert e.response is not None
                     if e.response.status_code == 429:
                         logger.warning(f"Failed due to too many requests: {e.args}")
-                    # Dataspace failed -> try asf
+                        # Dataspace failed -> try asf
+                    else:
+                        raise
 
     # For failures from scihub, try ASF
     if not dataspace_successful:
