@@ -30,6 +30,7 @@ from multiprocessing.pool import ThreadPool
 from pathlib import Path
 
 from dateutil.parser import parse
+from requests.exceptions import HTTPError
 
 from .asf_client import ASFClient
 from .dataspace_client import DataspaceClient
@@ -102,9 +103,17 @@ def download_eofs(
 
             if query:
                 logger.info("Attempting download from SciHub")
-                results = client.download_all(query, output_directory=save_dir)
-                filenames.extend(results)
-                dataspace_successful = True
+                try:
+                    results = client.download_all(
+                        query, output_directory=save_dir, max_workers=max_workers
+                    )
+                    filenames.extend(results)
+                    dataspace_successful = True
+                except HTTPError as e:
+                    assert e.response is not None
+                    if e.response.status_code == 429:
+                        logger.warning(f"Failed due to too many requests: {e.args}")
+                    # Dataspace failed -> try asf
 
     # For failures from scihub, try ASF
     if not dataspace_successful:

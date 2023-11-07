@@ -1,6 +1,7 @@
 """Client to get orbit files from dataspace.copernicus.eu ."""
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
@@ -164,13 +165,19 @@ class DataspaceClient:
             logger.warning("The following dates were not found: %s", remaining_dates)
         return all_results
 
-    def download_all(self, query_results: list[dict], output_directory: Filename):
+    def download_all(
+        self,
+        query_results: list[dict],
+        output_directory: Filename,
+        max_workers: int = 3,
+    ):
         """Download all the specified orbit products."""
         return download_all(
             query_results,
             output_directory=output_directory,
             username=self._username,
             password=self._password,
+            max_workers=max_workers,
         )
 
 
@@ -362,6 +369,7 @@ def download_orbit_file(
             if chunk:
                 outfile.write(chunk)
 
+    logger.info(f"Orbit file downloaded to {output_orbit_file_path}")
     return output_orbit_file_path
 
 
@@ -370,6 +378,7 @@ def download_all(
     output_directory: Filename,
     username: str = "",
     password: str = "",
+    max_workers: int = 3,
 ) -> list[Path]:
     """Download all the specified orbit products.
 
@@ -383,6 +392,9 @@ def download_all(
         CDSE username
     password : str
         CDSE password
+    max_workers : int, default = 3
+        Maximum parallel downloads from CDSE.
+        Note that >4 connections will result in a HTTP 429 Error
 
     """
     downloaded_paths: list[Path] = []
@@ -391,22 +403,38 @@ def download_all(
     #     query_results, start_time, stop_time
     # )
     # Obtain an access token the download request from the provided credentials
+
     access_token = get_access_token(username, password)
+    output_names = []
+    download_urls = []
     for query_result in query_results:
-        orbit_file_name = query_result["Name"]
         orbit_file_request_id = query_result["Id"]
 
         # Construct the URL used to download the Orbit file
         download_url = f"{DOWNLOAD_URL}({orbit_file_request_id})/$value"
+        download_urls.append(download_url)
 
-        logger.info(
+        orbit_file_name = query_result["Name"]
+        output_names.append(orbit_file_name)
+
+        logger.debug(
             f"Downloading Orbit file {orbit_file_name} from service endpoint "
             f"{download_url}"
         )
-        output_orbit_file_path = download_orbit_file(
-            download_url, output_directory, orbit_file_name, access_token
-        )
 
-        logger.info(f"Orbit file downloaded to {output_orbit_file_path}")
-        downloaded_paths.append(output_orbit_file_path)
+    downloaded_paths = []
+    with ThreadPoolExecutor(max_workers=max_workers) as exc:
+        futures = [
+            exc.submit(
+                download_orbit_file,
+                request_url=u,
+                output_directory=output_directory,
+                orbit_file_name=n,
+                access_token=access_token,
+            )
+            for (u, n) in zip(download_urls, output_names)
+        ]
+        for f in futures:
+            downloaded_paths.append(f.result())
+
     return downloaded_paths
