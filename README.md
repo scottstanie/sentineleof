@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/scottstanie/sentineleof.svg?branch=master)](https://travis-ci.org/scottstanie/sentineleof)
+[![Build](https://github.com/scottstanie/sentineleof/actions/workflows/ci.yml/badge.svg)](https://github.com/scottstanie/sentineleof/actions/workflows/ci.yml)
 
 # Sentinel EOF
 
