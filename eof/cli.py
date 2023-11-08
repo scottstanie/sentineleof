@@ -92,6 +92,12 @@ from eof._auth import NASA_HOST, DATASPACE_HOST, setup_netrc
     is_flag=True,
     help="save credentials provided interactively in the ~/.netrc file if necessary",
 )
+@click.option(
+    "--max-workers",
+    type=int,
+    default=3,
+    help="Number of parallel downloads to run. Note that CDSE has a limit of 4",
+)
 def cli(
     search_path: str,
     save_dir: str,
@@ -107,6 +113,7 @@ def cli(
     cdse_password: str = "",
     ask_password: bool = False,
     update_netrc: bool = False,
+    max_workers: int = 3,
 ):
     """Download Sentinel precise orbit files.
 
@@ -136,4 +143,5 @@ def cli(
         asf_password=asf_password,
         cdse_user=cdse_user,
         cdse_password=cdse_password,
+        max_workers=max_workers,
     )
