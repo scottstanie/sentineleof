@@ -126,7 +126,7 @@ class Sentinel(Base):
         r"(?P<beam>[\w\d]{2})_"
         r"(?P<product_type>[\w_]{3})"
         r"(?P<resolution_class>[FHM_])_"
-        r"(?P<product_level>[012])S"
+        r"(?P<product_level>[012])[SA]"
         r"(?P<polarization>[SDHV]{2})_"
         r"(?P<start_datetime>[T\d]{15})_"
         r"(?P<stop_datetime>[T\d]{15})_"
