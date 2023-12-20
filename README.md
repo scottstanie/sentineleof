@@ -71,7 +71,7 @@ will search `/path/to/safe_files/` for Sentinel-1 scenes, and save the `.EOF` fi
 
 ## Command Line Interface Reference
 
-The command line tool in `cli.py` was made using the [click](https://pocco-click.readthedocs.io/en/latest/) library.
+Full options available for the command line tool are:
 
 ```
 $ eof --help
@@ -87,20 +87,38 @@ Usage: eof [OPTIONS]
   products
 
 Options:
-  -p, --search-path DIRECTORY  Path of interest for finding Sentinel products.
-                               [default: .]
-
-  --save-dir DIRECTORY         Directory to save output .EOF files into
-                               [default: .]
-
-  --sentinel-file PATH         Specify path to download only 1 .EOF for a
-                               Sentinel-1 file/folder
-
-  -d, --date TEXT              Validity date for EOF to download
-  -m, --mission [S1A|S1B]      Optionally specify Sentinel satellite to
-                               download (default: gets both S1A and S1B)
-
-  --help                       Show this message and exit.
+  -p, --search-path DIRECTORY     Path of interest for finding Sentinel
+                                  products.   [default: .]
+  --save-dir DIRECTORY            Directory to save output .EOF files into
+                                  [default: .]
+  --sentinel-file PATH            Specify path to download only 1 .EOF for a
+                                  Sentinel-1 file/folder
+  -d, --date TEXT                 Alternative to specifying Sentinel products:
+                                  choose date to download for.
+  -m, --mission [S1A|S1B]         If using `--date`, optionally specify
+                                  Sentinel satellite to download (default:
+                                  gets both S1A and S1B)
+  --orbit-type [precise|restituted]
+                                  Optionally specify the type of orbit file to
+                                  get (default: precise (POEORB), but fallback
+                                  to restituted (RESORB))
+  --force-asf                     Force the downloader to search ASF instead
+                                  of ESA.
+  --debug                         Set logging level to DEBUG
+  --cdse-user TEXT                Copernicus Data Space Ecosystem username. If
+                                  not provided the program asks for it
+  --cdse-password TEXT            Copernicus Data Space Ecosystem password. If
+                                  not provided the program asks for it
+  --asf-user TEXT                 ASF username. If not provided the program
+                                  asks for it
+  --asf-password TEXT             ASF password. If not provided the program
+                                  asks for it
+  --ask-password                  ask for passwords interactively if needed
+  --update-netrc                  save credentials provided interactively in
+                                  the ~/.netrc file if necessary
+  --max-workers INTEGER           Number of parallel downloads to run. Note
+                                  that CDSE has a limit of 4
+  --help                          Show this message and exit.
 ```
 
 To use the function from python, you can pass a list of dates:
