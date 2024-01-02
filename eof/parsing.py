@@ -19,8 +19,6 @@ class EOFLinkFinder(HTMLParser):
     >>> resp = requests.get("http://step.esa.int/auxdata/orbits/Sentinel-1/POEORB/S1B/2020/10/")
     >>> parser = EOFLinkFinder()
     >>> parser.feed(resp.text)
-    >>> print(sorted(parser.eof_links)[0])
-    S1B_OPER_AUX_POEORB_OPOD_20201022T111233_V20201001T225942_20201003T005942.EOF.zip
     """
 
     def __init__(self):
