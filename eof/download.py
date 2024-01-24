@@ -28,6 +28,7 @@ import itertools
 import os
 from multiprocessing.pool import ThreadPool
 from pathlib import Path
+from typing import Literal, Optional
 
 from dateutil.parser import parse
 from requests.exceptions import HTTPError
@@ -45,7 +46,7 @@ def download_eofs(
     missions=None,
     sentinel_file=None,
     save_dir=".",
-    orbit_type="precise",
+    orbit_type: Optional[Literal["precise", "restituted"]] = None,
     force_asf: bool = False,
     asf_user: str = "",
     asf_password: str = "",
@@ -61,7 +62,14 @@ def download_eofs(
             No input downloads both, must be same len as orbit_dts
         sentinel_file (str): path to Sentinel-1 filename to download one .EOF for
         save_dir (str): directory to save the EOF files into
-        orbit_type (str): precise or restituted
+        orbit_type (str): "precise" or "restituted", optional.
+            If None, will attempt "precise" first, then fallback to "restituted"
+        force_asf (bool): force download from ASF even if credentials are provided
+        asf_user (str): ASF username
+        asf_password (str): ASF password
+        cdse_user (str): CDSE username
+        cdse_password (str): CDSE password
+        max_workers (int): number of workers to use for parallel downloads
 
     Returns:
         list[str]: all filenames of saved orbit files
@@ -204,7 +212,7 @@ def main(
     sentinel_file=None,
     mission=None,
     date=None,
-    orbit_type="precise",
+    orbit_type: Optional[Literal["precise", "restituted"]] = None,
     force_asf: bool = False,
     asf_user: str = "",
     asf_password: str = "",

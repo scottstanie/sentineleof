@@ -129,9 +129,9 @@ class ASFClient:
                 remaining_orbits.append((dt, mission))
 
         if remaining_orbits:
-            logger.warning("The following dates were not found: %s", remaining_orbits)
+            logger.info("The following dates were not found: %s", remaining_orbits)
             if orbit_type == "precise":
-                logger.warning(
+                logger.info(
                     "Attempting to download the restituted orbits for these dates."
                 )
                 remaining_dts, remaining_missions = zip(*remaining_orbits)

@@ -49,10 +49,11 @@ from eof._auth import NASA_HOST, DATASPACE_HOST, setup_netrc
 )
 @click.option(
     "--orbit-type",
-    type=click.Choice(["precise", "restituted"]),
-    default="precise",
-    help="Optionally specify the type of orbit file to get "
-    "(default: precise (POEORB), but fallback to restituted (RESORB))",
+    type=click.Choice(["precise", "restituted", None]),
+    default=None,
+    help="Optionally specify the type of orbit file to get. "
+    "If None, will attempt precise (POEORB) but fallback to restituted (RESORB)."
+    " Otherwise, will fail if selected orbit type is not available.",
 )
 @click.option(
     "--force-asf",
