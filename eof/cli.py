@@ -4,8 +4,10 @@ CLI tool for downloading Sentinel 1 EOF files
 from __future__ import annotations
 
 import logging
+from typing import Optional
 
 import click
+from ._types import Filename
 
 from eof import download, log
 from eof._auth import NASA_HOST, DATASPACE_HOST, setup_netrc
@@ -98,6 +100,10 @@ from eof._auth import NASA_HOST, DATASPACE_HOST, setup_netrc
     help="save credentials provided interactively in the ~/.netrc file if necessary",
 )
 @click.option(
+    "--netrc-file",
+    help="Path to .netrc file. Default: ~/.netrc",
+)
+@click.option(
     "--max-workers",
     type=int,
     default=3,
@@ -119,6 +125,7 @@ def cli(
     cdse_2fa_token: str = "",
     ask_password: bool = False,
     update_netrc: bool = False,
+    netrc_file: Optional[Filename] = None,
     max_workers: int = 3,
 ):
     """Download Sentinel precise orbit files.
@@ -133,9 +140,9 @@ def cli(
     if ask_password:
         dryrun = not update_netrc
         if not force_asf and not (cdse_user and cdse_password):
-            cdse_user, cdse_password = setup_netrc(host=DATASPACE_HOST, dryrun=dryrun)
+            cdse_user, cdse_password = setup_netrc(netrc_file=netrc_file, host=DATASPACE_HOST, dryrun=dryrun)
         if not (cdse_user and cdse_password) and not (asf_user and asf_password):
-            asf_user, asf_password = setup_netrc(host=NASA_HOST, dryrun=dryrun)
+            asf_user, asf_password = setup_netrc(netrc_file=netrc_file, host=NASA_HOST, dryrun=dryrun)
 
     download.main(
         search_path=search_path,
@@ -150,5 +157,6 @@ def cli(
         cdse_user=cdse_user,
         cdse_password=cdse_password,
         cdse_2fa_token=cdse_2fa_token,
+        netrc_file=netrc_file,
         max_workers=max_workers,
     )

@@ -36,6 +36,7 @@ class ASFClient:
         cache_dir: Optional[Filename] = None,
         username: str = "",
         password: str = "",
+        netrc_file: Optional[Filename] = None,
     ):
         self._cache_dir = cache_dir
         if username and password:
@@ -46,7 +47,7 @@ class ASFClient:
             self._username = ""
             self._password = ""
             try:
-                self._username, self._password = get_netrc_credentials(NASA_HOST)
+                self._username, self._password = get_netrc_credentials(NASA_HOST, netrc_file)
             except FileNotFoundError:
                 logger.warning("No netrc file found.")
             except ValueError as e:

@@ -28,10 +28,12 @@ import itertools
 import os
 from multiprocessing.pool import ThreadPool
 from pathlib import Path
+from typing import Optional
 
 from dateutil.parser import parse
 from requests.exceptions import HTTPError
 
+from ._types import Filename
 from .asf_client import ASFClient
 from .dataspace_client import DataspaceClient
 from .log import logger
@@ -52,6 +54,7 @@ def download_eofs(
     cdse_user: str = "",
     cdse_password: str = "",
     cdse_2fa_token: str = "",
+    netrc_file: Optional[Filename] = None,
     max_workers: int = MAX_WORKERS,
 ) -> list[Path]:
     """Downloads and saves EOF files for specific dates
@@ -90,7 +93,7 @@ def download_eofs(
 
     # First, check that Scihub isn't having issues
     if not force_asf:
-        client = DataspaceClient(username=cdse_user, password=cdse_password, token_2fa=cdse_2fa_token)
+        client = DataspaceClient(username=cdse_user, password=cdse_password, token_2fa=cdse_2fa_token, netrc_file=netrc_file)
         if client._username and client._password:
             # try to search on scihub
             if sentinel_file:
@@ -212,6 +215,7 @@ def main(
     cdse_user: str = "",
     cdse_password: str = "",
     cdse_2fa_token: str = "",
+    netrc_file: Optional[Filename] = None,
     max_workers: int = MAX_WORKERS,
 ):
     """Function used for entry point to download eofs"""
@@ -257,5 +261,6 @@ def main(
         cdse_user=cdse_user,
         cdse_password=cdse_password,
         cdse_2fa_token=cdse_2fa_token,
+        netrc_file=netrc_file,
         max_workers=max_workers,
     )

@@ -31,11 +31,17 @@ class DataspaceClient:
     T0 = timedelta(seconds=T_ORBIT + 60)
     T1 = timedelta(seconds=60)
 
-    def __init__(self, username: str = "", password: str = "", token_2fa: str = ""):
+    def __init__(
+            self,
+            username: str = "",
+            password: str = "",
+            token_2fa: str = "",
+            netrc_file: Optional[Filename] = None,
+    ):
         if not (username and password):
             logger.debug("Get credentials form netrc")
             try:
-                username, password = get_netrc_credentials(DATASPACE_HOST)
+                username, password = get_netrc_credentials(DATASPACE_HOST, netrc_file)
             except FileNotFoundError:
                 logger.warning("No netrc file found.")
             except ValueError as e:
@@ -48,6 +54,7 @@ class DataspaceClient:
         self._username = username
         self._password = password
         self._token_2fa = token_2fa
+        self._netrc_file = netrc_file
 
     def query_orbit(
         self,
@@ -170,6 +177,7 @@ class DataspaceClient:
         self,
         query_results: list[dict],
         output_directory: Filename,
+        netrc_file : Optional[Filename] = None,
         max_workers: int = 3,
     ):
         """Download all the specified orbit products."""
@@ -179,6 +187,7 @@ class DataspaceClient:
             username=self._username,
             password=self._password,
             token_2fa=self._token_2fa,
+            netrc_file=netrc_file,
             max_workers=max_workers,
         )
 
@@ -278,7 +287,7 @@ def query_orbit_file_service(query: str) -> list[dict]:
     return query_results
 
 
-def get_access_token(username, password, token_2fa) -> Optional[str]:
+def get_access_token(username, password, token_2fa, netrc_file) -> Optional[str]:
     """Get an access token for the Copernicus Data Space Ecosystem (CDSE) API.
 
     Code from https://documentation.dataspace.copernicus.eu/APIs/Token.html
@@ -286,7 +295,7 @@ def get_access_token(username, password, token_2fa) -> Optional[str]:
     if not (username and password):
         logger.debug("Get credentials form netrc")
         try:
-            username, password = get_netrc_credentials(DATASPACE_HOST)
+            username, password = get_netrc_credentials(DATASPACE_HOST, netrc_file)
         except FileNotFoundError:
             logger.warning("No netrc file found.")
             return None
@@ -383,6 +392,7 @@ def download_all(
     username: str = "",
     password: str = "",
     token_2fa: str = "",
+    netrc_file: Optional[Filename] = None,
     max_workers: int = 3,
 ) -> list[Path]:
     """Download all the specified orbit products.
@@ -411,7 +421,7 @@ def download_all(
     # )
     # Obtain an access token the download request from the provided credentials
 
-    access_token = get_access_token(username, password, token_2fa)
+    access_token = get_access_token(username, password, token_2fa, netrc_file)
     output_names = []
     download_urls = []
     for query_result in query_results:

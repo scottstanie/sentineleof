@@ -119,6 +119,7 @@ Options:
   --ask-password                  ask for passwords interactively if needed
   --update-netrc                  save credentials provided interactively in
                                   the ~/.netrc file if necessary
+  --netrc-file TEXT               Path to .netrc file. Default: ~/.netrc
   --max-workers INTEGER           Number of parallel downloads to run. Note
                                   that CDSE has a limit of 4
   --help                          Show this message and exit.

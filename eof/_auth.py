@@ -4,6 +4,7 @@ import getpass
 import netrc
 import os
 from pathlib import Path
+from typing import Optional
 
 from ._types import Filename
 from .log import logger as _logger
@@ -23,11 +24,12 @@ def check_netrc(netrc_file: Filename = "~/.netrc"):
 
 
 def setup_netrc(
-    netrc_file: Filename = "~/.netrc",
+    netrc_file: Optional[Filename] = None,
     host: str = NASA_HOST,
     dryrun: bool = False,
 ):
     """Prompt user for NASA/Dataspace username/password, store as attribute of ~/.netrc."""
+    netrc_file = netrc_file or "~/.netrc"
     netrc_file = Path(netrc_file).expanduser()
     try:
         n = netrc.netrc(netrc_file)
@@ -68,7 +70,7 @@ def setup_netrc(
     username, password = _get_username_pass(host)
     if not dryrun:
         # Add account to netrc file
-        n.hosts[host] = (username, None, password)
+        n.hosts[host] = (username, '', password)
         print(f"Saving credentials to {netrc_file} (machine={host}).")
         with open(netrc_file, "w") as f:
             f.write(str(n))
@@ -84,9 +86,12 @@ def _file_is_0600(filename: Filename):
     return oct(Path(filename).stat().st_mode)[-4:] == "0600"
 
 
-def get_netrc_credentials(host: str) -> tuple[str, str]:
+def get_netrc_credentials(host: str, netrc_file: Optional[Filename] = None) -> tuple[str, str]:
     """Get username and password from netrc file for a given host."""
-    n = netrc.netrc()
+    netrc_file = netrc_file or "~/.netrc"
+    netrc_file = Path(netrc_file).expanduser()
+    _logger.info(f"Using {netrc_file=!r}")
+    n = netrc.netrc(netrc_file)
     auth = n.authenticators(host)
     if auth is None:
         raise ValueError(f"No username/password found for {host} in ~/.netrc")
