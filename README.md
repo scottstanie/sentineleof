@@ -109,6 +109,9 @@ Options:
                                   not provided the program asks for it
   --cdse-password TEXT            Copernicus Data Space Ecosystem password. If
                                   not provided the program asks for it
+  --cdse-2fa-token TEXT           Copernicus Data Space Ecosystem Two-Factor
+                                  Token. Optional, unless 2FA Authentification
+                                  has been enabled in user profile.
   --asf-user TEXT                 ASF username. If not provided the program
                                   asks for it
   --asf-password TEXT             ASF password. If not provided the program

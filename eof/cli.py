@@ -75,6 +75,11 @@ from eof._auth import NASA_HOST, DATASPACE_HOST, setup_netrc
     "If not provided the program asks for it",
 )
 @click.option(
+    "--cdse-2fa-token",
+    help="Copernicus Data Space Ecosystem Two-Factor Token. "
+    "Optional, unless 2FA Authentification has been enabled in user profile.",
+)
+@click.option(
     "--asf-user",
     help="ASF username. If not provided the program asks for it",
 )
@@ -111,6 +116,7 @@ def cli(
     asf_password: str = "",
     cdse_user: str = "",
     cdse_password: str = "",
+    cdse_2fa_token: str = "",
     ask_password: bool = False,
     update_netrc: bool = False,
     max_workers: int = 3,
@@ -143,5 +149,6 @@ def cli(
         asf_password=asf_password,
         cdse_user=cdse_user,
         cdse_password=cdse_password,
+        cdse_2fa_token=cdse_2fa_token,
         max_workers=max_workers,
     )

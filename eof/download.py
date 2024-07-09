@@ -51,6 +51,7 @@ def download_eofs(
     asf_password: str = "",
     cdse_user: str = "",
     cdse_password: str = "",
+    cdse_2fa_token: str = "",
     max_workers: int = MAX_WORKERS,
 ) -> list[Path]:
     """Downloads and saves EOF files for specific dates
@@ -89,7 +90,7 @@ def download_eofs(
 
     # First, check that Scihub isn't having issues
     if not force_asf:
-        client = DataspaceClient(username=cdse_user, password=cdse_password)
+        client = DataspaceClient(username=cdse_user, password=cdse_password, token_2fa=cdse_2fa_token)
         if client._username and client._password:
             # try to search on scihub
             if sentinel_file:
@@ -210,6 +211,7 @@ def main(
     asf_password: str = "",
     cdse_user: str = "",
     cdse_password: str = "",
+    cdse_2fa_token: str = "",
     max_workers: int = MAX_WORKERS,
 ):
     """Function used for entry point to download eofs"""
@@ -254,5 +256,6 @@ def main(
         asf_password=asf_password,
         cdse_user=cdse_user,
         cdse_password=cdse_password,
+        cdse_2fa_token=cdse_2fa_token,
         max_workers=max_workers,
     )

@@ -31,7 +31,7 @@ class DataspaceClient:
     T0 = timedelta(seconds=T_ORBIT + 60)
     T1 = timedelta(seconds=60)
 
-    def __init__(self, username: str = "", password: str = ""):
+    def __init__(self, username: str = "", password: str = "", token_2fa: str = ""):
         if not (username and password):
             logger.debug("Get credentials form netrc")
             try:
@@ -47,6 +47,7 @@ class DataspaceClient:
 
         self._username = username
         self._password = password
+        self._token_2fa = token_2fa
 
     def query_orbit(
         self,
@@ -177,6 +178,7 @@ class DataspaceClient:
             output_directory=output_directory,
             username=self._username,
             password=self._password,
+            token_2fa=self._token_2fa,
             max_workers=max_workers,
         )
 
@@ -276,7 +278,7 @@ def query_orbit_file_service(query: str) -> list[dict]:
     return query_results
 
 
-def get_access_token(username, password) -> Optional[str]:
+def get_access_token(username, password, token_2fa) -> Optional[str]:
     """Get an access token for the Copernicus Data Space Ecosystem (CDSE) API.
 
     Code from https://documentation.dataspace.copernicus.eu/APIs/Token.html
@@ -295,6 +297,8 @@ def get_access_token(username, password) -> Optional[str]:
         "password": password,
         "grant_type": "password",
     }
+    if token_2fa:  # Double authentication is used
+        data["totp"] = token_2fa
 
     try:
         r = requests.post(AUTH_URL, data=data)
@@ -378,6 +382,7 @@ def download_all(
     output_directory: Filename,
     username: str = "",
     password: str = "",
+    token_2fa: str = "",
     max_workers: int = 3,
 ) -> list[Path]:
     """Download all the specified orbit products.
@@ -392,6 +397,8 @@ def download_all(
         CDSE username
     password : str
         CDSE password
+    token_2fa : str
+        2FA Token used in profiles with double authentication
     max_workers : int, default = 3
         Maximum parallel downloads from CDSE.
         Note that >4 connections will result in a HTTP 429 Error
@@ -404,7 +411,7 @@ def download_all(
     # )
     # Obtain an access token the download request from the provided credentials
 
-    access_token = get_access_token(username, password)
+    access_token = get_access_token(username, password, token_2fa)
     output_names = []
     download_urls = []
     for query_result in query_results:
