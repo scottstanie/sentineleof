@@ -90,7 +90,7 @@ def get_netrc_credentials(host: str, netrc_file: Optional[Filename] = None) -> t
     """Get username and password from netrc file for a given host."""
     netrc_file = netrc_file or "~/.netrc"
     netrc_file = Path(netrc_file).expanduser()
-    _logger.info(f"Using {netrc_file=!r}")
+    _logger.debug(f"Using {netrc_file=!r}")
     n = netrc.netrc(netrc_file)
     auth = n.authenticators(host)
     if auth is None:

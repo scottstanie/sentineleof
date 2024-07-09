@@ -48,7 +48,7 @@ class DataspaceClient:
                 if DATASPACE_HOST not in e.args[0]:
                     raise e
                 logger.warning(
-                    f"No CDSE credentials found in netrc file. Please create one using {SIGNUP_URL}"
+                    f"No CDSE credentials found in netrc file {netrc_file!r}. Please create one using {SIGNUP_URL}"
                 )
 
         self._username = username

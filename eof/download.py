@@ -126,7 +126,7 @@ def download_eofs(
         if not force_asf:
             logger.warning("Dataspace failed, trying ASF")
 
-        asf_client = ASFClient(username=asf_user, password=asf_password)
+        asf_client = ASFClient(username=asf_user, password=asf_password, netrc_file=netrc_file)
         urls = asf_client.get_download_urls(orbit_dts, missions, orbit_type=orbit_type)
         # Download and save all links in parallel
         pool = ThreadPool(processes=max_workers)
