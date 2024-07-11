@@ -109,6 +109,9 @@ Options:
                                   not provided the program asks for it
   --cdse-password TEXT            Copernicus Data Space Ecosystem password. If
                                   not provided the program asks for it
+  --cdse-2fa-token TEXT           Copernicus Data Space Ecosystem Two-Factor
+                                  Token. Optional, unless 2FA Authentification
+                                  has been enabled in user profile.
   --asf-user TEXT                 ASF username. If not provided the program
                                   asks for it
   --asf-password TEXT             ASF password. If not provided the program
@@ -116,6 +119,7 @@ Options:
   --ask-password                  ask for passwords interactively if needed
   --update-netrc                  save credentials provided interactively in
                                   the ~/.netrc file if necessary
+  --netrc-file TEXT               Path to .netrc file. Default: ~/.netrc
   --max-workers INTEGER           Number of parallel downloads to run. Note
                                   that CDSE has a limit of 4
   --help                          Show this message and exit.

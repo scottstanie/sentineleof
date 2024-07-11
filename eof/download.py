@@ -28,10 +28,12 @@ import itertools
 import os
 from multiprocessing.pool import ThreadPool
 from pathlib import Path
+from typing import Optional
 
 from dateutil.parser import parse
 from requests.exceptions import HTTPError
 
+from ._types import Filename
 from .asf_client import ASFClient
 from .dataspace_client import DataspaceClient
 from .log import logger
@@ -51,6 +53,8 @@ def download_eofs(
     asf_password: str = "",
     cdse_user: str = "",
     cdse_password: str = "",
+    cdse_2fa_token: str = "",
+    netrc_file: Optional[Filename] = None,
     max_workers: int = MAX_WORKERS,
 ) -> list[Path]:
     """Downloads and saves EOF files for specific dates
@@ -89,7 +93,7 @@ def download_eofs(
 
     # First, check that Scihub isn't having issues
     if not force_asf:
-        client = DataspaceClient(username=cdse_user, password=cdse_password)
+        client = DataspaceClient(username=cdse_user, password=cdse_password, token_2fa=cdse_2fa_token, netrc_file=netrc_file)
         if client._username and client._password:
             # try to search on scihub
             if sentinel_file:
@@ -122,7 +126,7 @@ def download_eofs(
         if not force_asf:
             logger.warning("Dataspace failed, trying ASF")
 
-        asf_client = ASFClient(username=asf_user, password=asf_password)
+        asf_client = ASFClient(username=asf_user, password=asf_password, netrc_file=netrc_file)
         urls = asf_client.get_download_urls(orbit_dts, missions, orbit_type=orbit_type)
         # Download and save all links in parallel
         pool = ThreadPool(processes=max_workers)
@@ -210,6 +214,8 @@ def main(
     asf_password: str = "",
     cdse_user: str = "",
     cdse_password: str = "",
+    cdse_2fa_token: str = "",
+    netrc_file: Optional[Filename] = None,
     max_workers: int = MAX_WORKERS,
 ):
     """Function used for entry point to download eofs"""
@@ -254,5 +260,7 @@ def main(
         asf_password=asf_password,
         cdse_user=cdse_user,
         cdse_password=cdse_password,
+        cdse_2fa_token=cdse_2fa_token,
+        netrc_file=netrc_file,
         max_workers=max_workers,
     )
