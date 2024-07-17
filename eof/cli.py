@@ -1,6 +1,7 @@
 """
 CLI tool for downloading Sentinel 1 EOF files
 """
+
 from __future__ import annotations
 
 import logging
@@ -67,6 +68,11 @@ from eof._auth import NASA_HOST, DATASPACE_HOST, setup_netrc
     help="Set logging level to DEBUG",
 )
 @click.option(
+    "--cdse-access-token",
+    help="Copernicus Data Space Ecosystem access-token. "
+    "The access token can be generated beforehand. See https://documentation.dataspace.copernicus.eu/APIs/Token.html",
+)
+@click.option(
     "--cdse-user",
     help="Copernicus Data Space Ecosystem username. "
     "If not provided the program asks for it",
@@ -120,6 +126,7 @@ def cli(
     debug: bool,
     asf_user: str = "",
     asf_password: str = "",
+    cdse_access_token: Optional[str] = None,
     cdse_user: str = "",
     cdse_password: str = "",
     cdse_2fa_token: str = "",
@@ -154,6 +161,7 @@ def cli(
         force_asf=force_asf,
         asf_user=asf_user,
         asf_password=asf_password,
+        cdse_access_token=cdse_access_token,
         cdse_user=cdse_user,
         cdse_password=cdse_password,
         cdse_2fa_token=cdse_2fa_token,

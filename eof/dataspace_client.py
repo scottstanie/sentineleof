@@ -32,32 +32,39 @@ class DataspaceClient:
     T1 = timedelta(seconds=60)
 
     def __init__(
-            self,
-            username: str = "",
-            password: str = "",
-            token_2fa: str = "",
-            netrc_file: Optional[Filename] = None,
-    ):
-        if not (username and password):
-            logger.debug("Get credentials form netrc")
-            try:
-                username, password = get_netrc_credentials(DATASPACE_HOST, netrc_file)
-            except FileNotFoundError:
-                logger.warning("No netrc file found.")
-            except ValueError as e:
-                if DATASPACE_HOST not in e.args[0]:
-                    raise e
-                logger.warning(
-                    f"No CDSE credentials found in netrc file {netrc_file!r}. Please create one using {SIGNUP_URL}"
-                )
-
-        self._username = username
-        self._password = password
-        self._token_2fa = token_2fa
-        self._netrc_file = netrc_file
-
-    def query_orbit(
         self,
+        access_token: Optional[str] = None,
+        username: str = "",
+        password: str = "",
+        token_2fa: str = "",
+        netrc_file: Optional[Filename] = None,
+    ):
+        self._access_token = access_token
+        if not access_token:
+            if not (username and password):
+                logger.debug(f"Get credentials form netrc ({netrc_file!r})")
+                try:
+                    username, password = get_netrc_credentials(DATASPACE_HOST, netrc_file)
+                    self._access_token = get_access_token(username, password, token_2fa)
+                except FileNotFoundError:
+                    logger.warning("No netrc file found.")
+                except ValueError as e:
+                    if DATASPACE_HOST not in e.args[0]:
+                        raise e
+                    logger.warning(
+                        f"No CDSE credentials found in netrc file {netrc_file!r}. Please create one using {SIGNUP_URL}"
+                    )
+                except Exception as e:
+                    logger.warning(f"Error: {str(e)}")
+
+            # Obtain an access token the download request from the provided credentials
+
+    def __bool__(self):
+        """Tells whether the object has been correctly initialized"""
+        return bool(self._access_token)
+
+    @staticmethod
+    def query_orbit(
         t0: datetime,
         t1: datetime,
         satellite_id: str,
@@ -75,8 +82,8 @@ class DataspaceClient:
         # range
         return query_orbit_file_service(query)
 
+    @staticmethod
     def query_orbit_for_product(
-        self,
         product,
         orbit_type: str = "precise",
         t0_margin: timedelta = T0,
@@ -85,7 +92,7 @@ class DataspaceClient:
         if isinstance(product, str):
             product = S1Product(product)
 
-        return self.query_orbit_by_dt(
+        return DataspaceClient.query_orbit_by_dt(
             [product.start_time],
             [product.mission],
             orbit_type=orbit_type,
@@ -93,8 +100,8 @@ class DataspaceClient:
             t1_margin=t1_margin,
         )
 
+    @staticmethod
     def query_orbit_by_dt(
-        self,
         orbit_dts,
         missions,
         orbit_type: str = "precise",
@@ -126,7 +133,7 @@ class DataspaceClient:
         for dt, mission in zip(orbit_dts, missions):
             # Only check for precise orbits if that is what we want
             if orbit_type == "precise":
-                products = self.query_orbit(
+                products = DataspaceClient.query_orbit(
                     dt - t0_margin,
                     dt + t1_margin,
                     # dt - timedelta(seconds=T_ORBIT + 60),
@@ -148,7 +155,7 @@ class DataspaceClient:
                 all_results.append(result)
             else:
                 # try with RESORB
-                products = self.query_orbit(
+                products = DataspaceClient.query_orbit(
                     dt - timedelta(seconds=T_ORBIT + 60),
                     dt + timedelta(seconds=60),
                     mission,
@@ -177,17 +184,13 @@ class DataspaceClient:
         self,
         query_results: list[dict],
         output_directory: Filename,
-        netrc_file : Optional[Filename] = None,
         max_workers: int = 3,
     ):
         """Download all the specified orbit products."""
         return download_all(
             query_results,
             output_directory=output_directory,
-            username=self._username,
-            password=self._password,
-            token_2fa=self._token_2fa,
-            netrc_file=netrc_file,
+            access_token=self._access_token,
             max_workers=max_workers,
         )
 
@@ -224,6 +227,7 @@ def _construct_orbit_file_query(
     query_template = (
         "startswith(Name,'{mission_id}') and contains(Name,'{orbit_type}') "
         "and ContentDate/Start lt '{start_time}' and ContentDate/End gt '{stop_time}'"
+        # " and productType eq {orbit_type}"
     )
 
     # Format the query template using the values we were provided
@@ -287,18 +291,12 @@ def query_orbit_file_service(query: str) -> list[dict]:
     return query_results
 
 
-def get_access_token(username, password, token_2fa, netrc_file) -> Optional[str]:
+def get_access_token(username, password, token_2fa) -> str:
     """Get an access token for the Copernicus Data Space Ecosystem (CDSE) API.
 
     Code from https://documentation.dataspace.copernicus.eu/APIs/Token.html
     """
-    if not (username and password):
-        logger.debug("Get credentials form netrc")
-        try:
-            username, password = get_netrc_credentials(DATASPACE_HOST, netrc_file)
-        except FileNotFoundError:
-            logger.warning("No netrc file found.")
-            return None
+    assert username and password, "Username and password values are expected!"
 
     data = {
         "client_id": "cdse-public",
@@ -313,17 +311,16 @@ def get_access_token(username, password, token_2fa, netrc_file) -> Optional[str]
         r = requests.post(AUTH_URL, data=data)
         r.raise_for_status()
     except Exception as err:
-        raise RuntimeError(f"Access token creation failed. Reason: {str(err)}")
+        raise RuntimeError(f"CDSE access token creation failed. Reason: {str(err)}")
 
     # Parse the access token from the response
     try:
         access_token = r.json()["access_token"]
+        return access_token
     except KeyError:
         raise RuntimeError(
-            'Failed to parsed expected field "access_token" from authentication response.'
+            'Failed to parse expected field "access_token" from CDSE authentication response.'
         )
-
-    return access_token
 
 
 def download_orbit_file(
@@ -382,17 +379,14 @@ def download_orbit_file(
             if chunk:
                 outfile.write(chunk)
 
-    logger.info(f"Orbit file downloaded to {output_orbit_file_path}")
+    logger.info(f"Orbit file downloaded to {output_orbit_file_path!r}")
     return output_orbit_file_path
 
 
 def download_all(
     query_results: list[dict],
     output_directory: Filename,
-    username: str = "",
-    password: str = "",
-    token_2fa: str = "",
-    netrc_file: Optional[Filename] = None,
+    access_token: Optional[str],
     max_workers: int = 3,
 ) -> list[Path]:
     """Download all the specified orbit products.
@@ -414,14 +408,14 @@ def download_all(
         Note that >4 connections will result in a HTTP 429 Error
 
     """
+    if not access_token:
+        raise RuntimeError("Invalid CDSE access token. Aborting.")
     downloaded_paths: list[Path] = []
     # Select an appropriate orbit file from the list returned from the query
     # orbit_file_name, orbit_file_request_id = select_orbit_file(
     #     query_results, start_time, stop_time
     # )
-    # Obtain an access token the download request from the provided credentials
 
-    access_token = get_access_token(username, password, token_2fa, netrc_file)
     output_names = []
     download_urls = []
     for query_result in query_results:
