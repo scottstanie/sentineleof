@@ -291,10 +291,12 @@ def query_orbit_file_service(query: str) -> list[dict]:
     return query_results
 
 
-def get_access_token(username, password, token_2fa) -> str:
+def get_access_token(username: str, password: str, token_2fa: Optional[str]) -> str:
     """Get an access token for the Copernicus Data Space Ecosystem (CDSE) API.
 
     Code from https://documentation.dataspace.copernicus.eu/APIs/Token.html
+
+    :precondition: username and password are non empty strings.
     """
     assert username and password, "Username and password values are expected!"
 

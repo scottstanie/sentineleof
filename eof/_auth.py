@@ -87,7 +87,12 @@ def _file_is_0600(filename: Filename):
 
 
 def get_netrc_credentials(host: str, netrc_file: Optional[Filename] = None) -> tuple[str, str]:
-    """Get username and password from netrc file for a given host."""
+    """
+    Get username and password from netrc file for a given host.
+
+    :return: username and password found for host in netrc_file
+    :postcondition: username and password are non empty strings.
+    """
     netrc_file = netrc_file or "~/.netrc"
     netrc_file = Path(netrc_file).expanduser()
     _logger.debug(f"Using {netrc_file=!r}")
@@ -98,6 +103,8 @@ def get_netrc_credentials(host: str, netrc_file: Optional[Filename] = None) -> t
     username, _, password = auth
     if username is None or password is None:
         raise ValueError(f"No username/password found for {host} in ~/.netrc")
+    if not username or not password:
+        raise ValueError(f"Empty username/password found for {host} in ~/.netrc")
     return username, password
 
 
