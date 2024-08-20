@@ -95,11 +95,13 @@ def get_netrc_credentials(host: str, netrc_file: Optional[Filename] = None) -> t
     """
     netrc_file = netrc_file or "~/.netrc"
     netrc_file = Path(netrc_file).expanduser()
-    _logger.debug(f"Using {netrc_file=!r}")
+    _logger.debug(f"Searching {host=!r} in {netrc_file=!r}")
     n = netrc.netrc(netrc_file)
+    # _logger.debug(f"Hosts found: {n.hosts}")
+    # _logger.debug(f"hosts[{host}] -> {n.hosts[host]}")
     auth = n.authenticators(host)
     if auth is None:
-        raise ValueError(f"No username/password found for {host} in ~/.netrc")
+        raise ValueError(f"{host} not declared in ~/.netrc")
     username, _, password = auth
     if username is None or password is None:
         raise ValueError(f"No username/password found for {host} in ~/.netrc")

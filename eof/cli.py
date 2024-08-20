@@ -8,10 +8,12 @@ import logging
 from typing import Optional
 
 import click
+
 from ._types import Filename
 
 from eof import download, log
 from eof._auth import NASA_HOST, DATASPACE_HOST, setup_netrc
+from eof.client import OrbitType
 
 
 @click.command()
@@ -157,7 +159,7 @@ def cli(
         sentinel_file=sentinel_file,
         mission=mission,
         date=date,
-        orbit_type=orbit_type,
+        orbit_type=OrbitType[orbit_type],
         force_asf=force_asf,
         asf_user=asf_user,
         asf_password=asf_password,

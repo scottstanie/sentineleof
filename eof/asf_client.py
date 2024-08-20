@@ -2,9 +2,9 @@
 from __future__ import annotations
 
 import os
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional
+from typing import Dict, List, Optional, Union
 from zipfile import ZipFile
 
 import requests
@@ -12,6 +12,7 @@ import requests
 from ._auth import NASA_HOST, get_netrc_credentials
 from ._select_orbit import T_ORBIT, ValidityError, last_valid_orbit
 from ._types import Filename
+from .client import Client, OrbitType
 from .log import logger
 from .parsing import EOFLinkFinder
 from .products import SentinelOrbit
@@ -20,7 +21,7 @@ SIGNUP_URL = "https://urs.earthdata.nasa.gov/users/new"
 """Url to prompt user to sign up for NASA Earthdata account."""
 
 
-class ASFClient:
+class ASFClient(Client):
     auth_url = (
         "https://urs.earthdata.nasa.gov/oauth/authorize?response_type=code&"
         "client_id=BO_n7nTIlMljdvU6kRRB3g&redirect_uri=https://auth.asf.alaska.edu/login"
@@ -28,8 +29,8 @@ class ASFClient:
 
     precise_url = "https://s1qc.asf.alaska.edu/aux_poeorb/"
     res_url = "https://s1qc.asf.alaska.edu/aux_resorb/"
-    urls = {"precise": precise_url, "restituted": res_url}
-    eof_lists = {"precise": None, "restituted": None}
+    urls = {OrbitType.precise: precise_url, OrbitType.restituted: res_url}
+    eof_lists : Dict[OrbitType, Optional[List[SentinelOrbit]]]= {OrbitType.precise: None, OrbitType.restituted: None}
 
     def __init__(
         self,
@@ -51,6 +52,7 @@ class ASFClient:
             except FileNotFoundError:
                 logger.warning("No netrc file found.")
             except ValueError as e:
+                logger.warning(f"can find ASF cred: {e}")
                 if NASA_HOST not in e.args[0]:
                     raise e
                 logger.warning(
@@ -61,23 +63,31 @@ class ASFClient:
         if self._username and self._password:
             self.session = self.get_authenticated_session()
 
-    def get_full_eof_list(self, orbit_type="precise", max_dt=None):
+    def query_orbit_by_dt(
+            self,
+            orbit_dts: Union[List[str], List[datetime]],
+            missions: Optional[List[str]],
+            orbit_type: OrbitType,
+            t0_margin: timedelta = Client.T0,
+            t1_margin: timedelta = Client.T1,
+    ):
+        return self.get_download_urls(orbit_dts, missions, orbit_type)
+
+    def get_full_eof_list(self, orbit_type: OrbitType, max_dt) -> List[SentinelOrbit]:
         """Get the list of orbit files from the ASF server."""
         if orbit_type not in self.urls.keys():
-            raise ValueError("Unknown orbit type: {}".format(orbit_type))
+            raise ValueError(f"Unknown orbit type: {orbit_type.name}")
 
-        if self.eof_lists.get(orbit_type) is not None:
-            return self.eof_lists[orbit_type]
+        if (eof_list := self.eof_lists.get(orbit_type)) is not None:
+            return eof_list
         # Try to see if we have the list of EOFs in the cache
         elif os.path.exists(self._get_filename_cache_path(orbit_type)):
             eof_list = self._get_cached_filenames(orbit_type)
             # Need to clear it if it's older than what we're looking for
             max_saved = max([e.start_time for e in eof_list])
             if max_saved < max_dt:
-                logger.warning("Clearing cached {} EOF list:".format(orbit_type))
-                logger.warning(
-                    "{} is older than requested {}".format(max_saved, max_dt)
-                )
+                logger.warning(f"Clearing cached {orbit_type.name} EOF list:")
+                logger.warning(f"{max_saved} is older than requested {max_dt}")
                 self._clear_cache(orbit_type)
             else:
                 logger.info("Using cached EOF list")
@@ -85,7 +95,8 @@ class ASFClient:
                 return eof_list
 
         logger.info("Downloading all filenames from ASF (may take awhile)")
-        resp = requests.get(self.urls.get(orbit_type))
+        assert orbit_type in self.urls
+        resp = requests.get(self.urls[orbit_type])
         finder = EOFLinkFinder()
         finder.feed(resp.text)
         eof_list = [SentinelOrbit(f) for f in finder.eof_links]
@@ -93,7 +104,7 @@ class ASFClient:
         self._write_cached_filenames(orbit_type, eof_list)
         return eof_list
 
-    def get_download_urls(self, orbit_dts, missions, orbit_type="precise"):
+    def get_download_urls(self, orbit_dts, missions, orbit_type: OrbitType = OrbitType.precise):
         """Find the URL for an orbit file covering the specified datetime
 
         Args:
@@ -113,10 +124,10 @@ class ASFClient:
         }
         # For precise orbits, we can have a larger front margin to ensure we
         # cover the ascending node crossing
-        if orbit_type == "precise":
-            margin0 = timedelta(seconds=T_ORBIT + 60)
+        if orbit_type == OrbitType.precise:
+            margin0 = Client.T0
         else:
-            margin0 = timedelta(seconds=60)
+            margin0 = Client.T1
 
         remaining_orbits = []
         urls = []
@@ -131,42 +142,42 @@ class ASFClient:
 
         if remaining_orbits:
             logger.warning("The following dates were not found: %s", remaining_orbits)
-            if orbit_type == "precise":
+            if orbit_type == OrbitType.precise:
                 logger.warning(
                     "Attempting to download the restituted orbits for these dates."
                 )
                 remaining_dts, remaining_missions = zip(*remaining_orbits)
                 urls.extend(
                     self.get_download_urls(
-                        remaining_dts, remaining_missions, orbit_type="restituted"
+                        remaining_dts, remaining_missions, orbit_type=OrbitType.restituted
                     )
                 )
 
         return urls
 
-    def _get_cached_filenames(self, orbit_type="precise"):
+    def _get_cached_filenames(self, orbit_type=OrbitType.precise):
         """Get the cache path for the ASF orbit files."""
         filepath = self._get_filename_cache_path(orbit_type)
         logger.debug(f"ASF file path cache: {filepath = }")
         if os.path.exists(filepath):
             with open(filepath, "r") as f:
                 return [SentinelOrbit(f) for f in f.read().splitlines()]
-        return None
+        return []
 
-    def _write_cached_filenames(self, orbit_type="precise", eof_list=[]):
+    def _write_cached_filenames(self, orbit_type=OrbitType.precise, eof_list=[]):
         """Cache the ASF orbit files."""
         filepath = self._get_filename_cache_path(orbit_type)
         with open(filepath, "w") as f:
             for e in eof_list:
                 f.write(e.filename + "\n")
 
-    def _clear_cache(self, orbit_type="precise"):
+    def _clear_cache(self, orbit_type=OrbitType.precise):
         """Clear the cache for the ASF orbit files."""
         filepath = self._get_filename_cache_path(orbit_type)
         os.remove(filepath)
 
-    def _get_filename_cache_path(self, orbit_type="precise"):
-        fname = "{}_filenames.txt".format(orbit_type.lower())
+    def _get_filename_cache_path(self, orbit_type=OrbitType.precise):
+        fname = f"{orbit_type.name}_filenames.txt"
         return os.path.join(self.get_cache_dir(), fname)
 
     def get_cache_dir(self):

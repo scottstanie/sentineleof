@@ -23,19 +23,21 @@ See parsers for Sentinel file naming description
 """
 
 from __future__ import annotations
+from datetime import datetime
 
 import glob
 import itertools
 import os
 from multiprocessing.pool import ThreadPool
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 from dateutil.parser import parse
 from requests.exceptions import HTTPError
 
 from ._types import Filename
 from .asf_client import ASFClient
+from .client import OrbitType
 from .dataspace_client import DataspaceClient
 from .log import logger
 from .products import Sentinel, SentinelOrbit
@@ -44,7 +46,7 @@ MAX_WORKERS = 6  # workers to download in parallel (for ASF backup)
 
 
 def download_eofs(
-    orbit_dts=None,
+    orbit_dts: Optional[List[datetime]] = None,
     missions=None,
     sentinel_file=None,
     save_dir=".",
@@ -77,13 +79,16 @@ def download_eofs(
             having different lengths, or `sentinel_file` being invalid
     """
     # TODO: condense list of same dates, different hours?
-    if missions and all(m not in ("S1A", "S1B") for m in missions):
-        raise ValueError('missions argument must be "S1A" or "S1B"')
     if sentinel_file:
         sent = Sentinel(sentinel_file)
         orbit_dts, missions = [sent.start_time], [sent.mission]
-    if missions and len(missions) != len(orbit_dts):
+    elif not orbit_dts:
+        raise AssertionError("Either sentinel_file or orbit_dts shall be set!")
+
+    if missions and orbit_dts and len(missions) != len(orbit_dts):
         raise ValueError("missions arg must be same length as orbit_dts")
+    if missions and all(m not in ("S1A", "S1B") for m in missions):
+        raise ValueError('missions argument must be "S1A" or "S1B"')
     if not missions:
         missions = itertools.repeat(None)
 
@@ -173,7 +178,7 @@ def find_unique_safes(search_path):
         try:
             parsed_file = Sentinel(filename)
         except ValueError:  # Doesn't match a sentinel file
-            logger.debug("Skipping {}, not a Sentinel 1 file".format(filename))
+            logger.debug(f"Skipping {filename!r}, not a Sentinel 1 file")
             continue
         file_set.add(parsed_file)
     return file_set
@@ -216,7 +221,7 @@ def main(
     sentinel_file=None,
     mission=None,
     date=None,
-    orbit_type="precise",
+    orbit_type: OrbitType = OrbitType.precise,
     force_asf: bool = False,
     asf_user: str = "",
     asf_password: str = "",

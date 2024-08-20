@@ -11,6 +11,7 @@ import requests
 from ._auth import DATASPACE_HOST, get_netrc_credentials
 from ._select_orbit import T_ORBIT
 from ._types import Filename
+from .client import Client, OrbitType
 from .log import logger
 from .products import Sentinel as S1Product
 
@@ -27,10 +28,7 @@ SIGNUP_URL = "https://dataspace.copernicus.eu/"
 """Url to prompt user to sign up for CDSE account."""
 
 
-class DataspaceClient:
-    T0 = timedelta(seconds=T_ORBIT + 60)
-    T1 = timedelta(seconds=60)
-
+class DataspaceClient(Client):
     def __init__(
         self,
         access_token: Optional[str] = None,
@@ -90,9 +88,9 @@ class DataspaceClient:
     @staticmethod
     def query_orbit_for_product(
         product,
-        orbit_type: str = "precise",
-        t0_margin: timedelta = T0,
-        t1_margin: timedelta = T1,
+        orbit_type: OrbitType = OrbitType.precise,
+        t0_margin: timedelta = Client.T0,
+        t1_margin: timedelta = Client.T1,
     ):
         if isinstance(product, str):
             product = S1Product(product)
@@ -109,9 +107,9 @@ class DataspaceClient:
     def query_orbit_by_dt(
         orbit_dts,
         missions,
-        orbit_type: str = "precise",
-        t0_margin: timedelta = T0,
-        t1_margin: timedelta = T1,
+        orbit_type: OrbitType = OrbitType.precise,
+        t0_margin: timedelta = Client.T0,
+        t1_margin: timedelta = Client.T1,
     ):
         """Query the Scihub api for product info for the specified missions/orbit_dts.
 
@@ -137,7 +135,7 @@ class DataspaceClient:
         all_results = []
         for dt, mission in zip(orbit_dts, missions):
             # Only check for precise orbits if that is what we want
-            if orbit_type == "precise":
+            if orbit_type == OrbitType.precise:
                 products = DataspaceClient.query_orbit(
                     dt - t0_margin,
                     dt + t1_margin,
