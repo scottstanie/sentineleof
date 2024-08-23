@@ -40,22 +40,27 @@ class DataspaceClient:
         netrc_file: Optional[Filename] = None,
     ):
         self._access_token = access_token
-        if not access_token:
-            if not (username and password):
-                logger.debug(f"Get credentials form netrc ({netrc_file!r})")
-                try:
+        if access_token:
+            logger.debug("Using provided CDSE access token")
+        else:
+            try:
+                if not (username and password):
+                    logger.debug(f"Get credentials form netrc ({netrc_file!r})")
+                    # Shall we keep username if explicitly set?
                     username, password = get_netrc_credentials(DATASPACE_HOST, netrc_file)
-                    self._access_token = get_access_token(username, password, token_2fa)
-                except FileNotFoundError:
-                    logger.warning("No netrc file found.")
-                except ValueError as e:
-                    if DATASPACE_HOST not in e.args[0]:
-                        raise e
-                    logger.warning(
-                        f"No CDSE credentials found in netrc file {netrc_file!r}. Please create one using {SIGNUP_URL}"
-                    )
-                except Exception as e:
-                    logger.warning(f"Error: {str(e)}")
+                else:
+                    logger.debug("Using provided username and password")
+                self._access_token = get_access_token(username, password, token_2fa)
+            except FileNotFoundError:
+                logger.warning("No netrc file found.")
+            except ValueError as e:
+                if DATASPACE_HOST not in e.args[0]:
+                    raise e
+                logger.warning(
+                    f"No CDSE credentials found in netrc file {netrc_file!r}. Please create one using {SIGNUP_URL}"
+                )
+            except Exception as e:
+                logger.warning(f"Error: {str(e)}")
 
             # Obtain an access token the download request from the provided credentials
 
@@ -290,14 +295,16 @@ def query_orbit_file_service(query: str) -> list[dict]:
     return query_results
 
 
-def get_access_token(username: str, password: str, token_2fa: Optional[str]) -> str:
+def get_access_token(username: Optional[str], password: Optional[str], token_2fa: Optional[str]) -> str:
     """Get an access token for the Copernicus Data Space Ecosystem (CDSE) API.
 
     Code from https://documentation.dataspace.copernicus.eu/APIs/Token.html
 
-    :precondition: username and password are non empty strings.
+    :raises ValueError: if either username or password is empty
+    :raises RuntimeError: if the access token cannot be created
     """
-    assert username and password, "Username and password values are expected!"
+    if not (username and password):
+        raise ValueError("Username and password values are expected!")
 
     data = {
         "client_id": "cdse-public",
