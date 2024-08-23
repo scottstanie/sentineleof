@@ -227,7 +227,6 @@ def _construct_orbit_file_query(
     query_template = (
         "startswith(Name,'{mission_id}') and contains(Name,'{orbit_type}') "
         "and ContentDate/Start lt '{start_time}' and ContentDate/End gt '{stop_time}'"
-        # " and productType eq {orbit_type}"
     )
 
     # Format the query template using the values we were provided
