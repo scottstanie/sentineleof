@@ -21,6 +21,7 @@ https://earth.esa.int/documents/247904/349490/GMES_Sentinels_POD_Service_File_Fo
 
 See parsers for Sentinel file naming description
 """
+
 from __future__ import annotations
 
 import glob
@@ -51,6 +52,7 @@ def download_eofs(
     force_asf: bool = False,
     asf_user: str = "",
     asf_password: str = "",
+    cdse_access_token: Optional[str] = None,
     cdse_user: str = "",
     cdse_password: str = "",
     cdse_2fa_token: str = "",
@@ -93,8 +95,14 @@ def download_eofs(
 
     # First, check that Scihub isn't having issues
     if not force_asf:
-        client = DataspaceClient(username=cdse_user, password=cdse_password, token_2fa=cdse_2fa_token, netrc_file=netrc_file)
-        if client._username and client._password:
+        client = DataspaceClient(
+            access_token=cdse_access_token,
+            username=cdse_user,
+            password=cdse_password,
+            token_2fa=cdse_2fa_token,
+            netrc_file=netrc_file,
+        )
+        if client:
             # try to search on scihub
             if sentinel_file:
                 query = client.query_orbit_for_product(
@@ -212,6 +220,7 @@ def main(
     force_asf: bool = False,
     asf_user: str = "",
     asf_password: str = "",
+    cdse_access_token: Optional[str] = None,
     cdse_user: str = "",
     cdse_password: str = "",
     cdse_2fa_token: str = "",
@@ -258,6 +267,7 @@ def main(
         force_asf=force_asf,
         asf_user=asf_user,
         asf_password=asf_password,
+        cdse_access_token=cdse_access_token,
         cdse_user=cdse_user,
         cdse_password=cdse_password,
         cdse_2fa_token=cdse_2fa_token,

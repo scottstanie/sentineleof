@@ -105,6 +105,10 @@ Options:
   --force-asf                     Force the downloader to search ASF instead
                                   of ESA.
   --debug                         Set logging level to DEBUG
+  --cdse-access-token TEXT        Copernicus Data Space Ecosystem access-
+                                  token. The access token can be generated
+                                  beforehand. See https://documentation.datasp
+                                  ace.copernicus.eu/APIs/Token.html
   --cdse-user TEXT                Copernicus Data Space Ecosystem username. If
                                   not provided the program asks for it
   --cdse-password TEXT            Copernicus Data Space Ecosystem password. If
