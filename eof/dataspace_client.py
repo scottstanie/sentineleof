@@ -11,7 +11,7 @@ import requests
 from ._auth import DATASPACE_HOST, get_netrc_credentials
 from ._select_orbit import T_ORBIT
 from ._types import Filename
-from .client import Client, OrbitType
+from .client import Client, OrbitType, AbstractSession
 from .log import logger
 from .products import Sentinel as S1Product
 
@@ -28,7 +28,12 @@ SIGNUP_URL = "https://dataspace.copernicus.eu/"
 """Url to prompt user to sign up for CDSE account."""
 
 
-class DataspaceClient(Client):
+class DataspaceSession(AbstractSession):
+    """
+    Authenticated session to Copernicus Dataspace.
+
+    Downloading is the only service provided.
+    """
     def __init__(
         self,
         access_token: Optional[str] = None,
@@ -66,8 +71,46 @@ class DataspaceClient(Client):
         """Tells whether the object has been correctly initialized"""
         return bool(self._access_token)
 
-    @staticmethod
+    def download_all(
+        self,
+        query_results: list[dict],
+        output_directory: Filename,
+        max_workers: int = 3,
+    ):
+        """Download all the specified orbit products."""
+        return download_all(
+            query_results,
+            output_directory=output_directory,
+            access_token=self._access_token,
+            max_workers=max_workers,
+        )
+
+
+class DataspaceClient(Client):
+    def authenticate(self, *args, **kwargs) -> DataspaceSession:
+        """
+        Authenticate to the client.
+
+        The authentication will try to use in order:
+        1. ``access_token``
+        2. ``username`` + ``password`` (+ ``token_2fa`` is set)
+        3. dataspace entry from ``netrc_file`` (or $NETRC, or ``~/.netrc``)
+
+        Args:
+            access_token (Optional[str]): already esstablished access token to Copernicus Dataspace
+            username (str): Optional user name
+            password (str): Optional use password
+            token_2fa (str): Optional 2FA Token
+            netrc_file (Optional[Filename]): Optional name of netrc file
+
+        :raise FileNotFoundError: if ``netrc`` file cannot be found.
+        :raise ValueError: if there is no entry for dataspace host in the netrc
+        :raises RuntimeError: if the access token cannot be created
+        """
+        return DataspaceSession(*args, **kwargs)
+
     def query_orbit(
+        self,
         t0: datetime,
         t1: datetime,
         satellite_id: str,
@@ -85,8 +128,8 @@ class DataspaceClient(Client):
         # range
         return query_orbit_file_service(query)
 
-    @staticmethod
     def query_orbit_for_product(
+        self,
         product,
         orbit_type: OrbitType = OrbitType.precise,
         t0_margin: timedelta = Client.T0,
@@ -95,7 +138,7 @@ class DataspaceClient(Client):
         if isinstance(product, str):
             product = S1Product(product)
 
-        return DataspaceClient.query_orbit_by_dt(
+        return self.query_orbit_by_dt(
             [product.start_time],
             [product.mission],
             orbit_type=orbit_type,
@@ -103,15 +146,18 @@ class DataspaceClient(Client):
             t1_margin=t1_margin,
         )
 
-    @staticmethod
     def query_orbit_by_dt(
+        self,
         orbit_dts,
         missions,
         orbit_type: OrbitType = OrbitType.precise,
         t0_margin: timedelta = Client.T0,
         t1_margin: timedelta = Client.T1,
     ):
-        """Query the Scihub api for product info for the specified missions/orbit_dts.
+        """Query the Copernicus dataspace API for product info for the specified missions/orbit_dts.
+
+        This method returns a single orbit file that completely includes
+        the requested range.
 
         Parameters
         ----------
@@ -136,7 +182,7 @@ class DataspaceClient(Client):
         for dt, mission in zip(orbit_dts, missions):
             # Only check for precise orbits if that is what we want
             if orbit_type == OrbitType.precise:
-                products = DataspaceClient.query_orbit(
+                products = self.query_orbit(
                     dt - t0_margin,
                     dt + t1_margin,
                     # dt - timedelta(seconds=T_ORBIT + 60),
@@ -158,7 +204,7 @@ class DataspaceClient(Client):
                 all_results.append(result)
             else:
                 # try with RESORB
-                products = DataspaceClient.query_orbit(
+                products = self.query_orbit(
                     dt - timedelta(seconds=T_ORBIT + 60),
                     dt + timedelta(seconds=60),
                     mission,

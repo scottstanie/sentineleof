@@ -16,6 +16,23 @@ class OrbitType(Enum):
     restituted = 2
 
 
+class AbstractSession:
+    """
+    Common interface for all download sessions
+
+    Once a session is created, it means we are authenticated to the related server.
+    """
+    @abstractmethod
+    def download_all(
+            self,
+            eofs,
+            output_directory: Filename,
+            max_workers: int = 3,
+    ):
+        """Download all the specified orbit products."""
+        pass
+
+
 class Client:
     """
     Common interface for all clients.
@@ -77,11 +94,12 @@ class Client:
         )
 
     @abstractmethod
-    def download_all(
+    def authenticate(
             self,
-            eofs,
-            output_directory: Filename,
-            max_workers: int = 3,
-    ):
-        """Download all the specified orbit products."""
+            *args,  # login, password, netrc...
+            **kwargs,
+    ) -> AbstractSession:
+        """
+        Authenticate on the client for downloading
+        """
         pass

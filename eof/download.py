@@ -100,14 +100,15 @@ def download_eofs(
 
     # First, check that Scihub isn't having issues
     if not force_asf:
-        client = DataspaceClient(
+        client = DataspaceClient()
+        session = client.authenticate(
             access_token=cdse_access_token,
             username=cdse_user,
             password=cdse_password,
             token_2fa=cdse_2fa_token,
             netrc_file=netrc_file,
         )
-        if client:
+        if session:
             # try to search on scihub
             if sentinel_file:
                 query = client.query_orbit_for_product(
@@ -119,9 +120,9 @@ def download_eofs(
                 )
 
             if query:
-                logger.info("Attempting download from SciHub")
+                logger.info("Attempting download from Copernicus Dataspace")
                 try:
-                    results = client.download_all(
+                    results = session.download_all(
                         query, output_directory=save_dir, max_workers=max_workers
                     )
                     filenames.extend(results)
