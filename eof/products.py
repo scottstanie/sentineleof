@@ -157,7 +157,7 @@ class Sentinel(Base):
         return hash(self.product_uid)
 
     @property
-    def start_time(self):
+    def start_time(self) -> datetime:
         """Returns start datetime from a sentinel file name
 
         Example:
