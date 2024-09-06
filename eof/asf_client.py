@@ -4,7 +4,7 @@ from __future__ import annotations
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, Optional, Sequence, Union
 from zipfile import ZipFile
 
 import requests
@@ -30,7 +30,7 @@ class ASFClient(Client):
     precise_url = "https://s1qc.asf.alaska.edu/aux_poeorb/"
     res_url = "https://s1qc.asf.alaska.edu/aux_resorb/"
     urls = {OrbitType.precise: precise_url, OrbitType.restituted: res_url}
-    eof_lists : Dict[OrbitType, Optional[List[SentinelOrbit]]]= {OrbitType.precise: None, OrbitType.restituted: None}
+    eof_lists : Dict[OrbitType, Optional[Sequence[SentinelOrbit]]]= {OrbitType.precise: None, OrbitType.restituted: None}
 
     def __init__(
         self,
@@ -65,15 +65,15 @@ class ASFClient(Client):
 
     def query_orbit_by_dt(
             self,
-            orbit_dts: Union[List[str], List[datetime]],
-            missions: Optional[List[str]],
+            orbit_dts: Union[Sequence[str], Sequence[datetime]],
+            missions: Optional[Sequence[str]],
             orbit_type: OrbitType,
             t0_margin: timedelta = Client.T0,
             t1_margin: timedelta = Client.T1,
     ):
         return self.get_download_urls(orbit_dts, missions, orbit_type)
 
-    def get_full_eof_list(self, orbit_type: OrbitType=OrbitType.precise, max_dt=None) -> List[SentinelOrbit]:
+    def get_full_eof_list(self, orbit_type: OrbitType=OrbitType.precise, max_dt=None) -> Sequence[SentinelOrbit]:
         """Get the list of orbit files from the ASF server."""
         if orbit_type not in self.urls.keys():
             raise ValueError(f"Unknown orbit type: {orbit_type.name}")

@@ -28,6 +28,7 @@ def netrc_filename(netrc_file: Optional[Filename] = None) -> Path:
     Returns ``netrc_file`` or $NETRC, or ``~/.netrc``
     """
     netrc_file = netrc_file or os.getenv('NETRC', "~/.netrc")
+    assert netrc_file  # Silencing mypy
     return Path(netrc_file).expanduser()
 
 

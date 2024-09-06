@@ -4,7 +4,7 @@
 from abc import abstractmethod
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import List, Optional, Union
+from typing import Optional, Sequence, Union
 
 from ._select_orbit import T_ORBIT
 from ._types import Filename
@@ -12,6 +12,9 @@ from .products import Sentinel as S1Product
 
 
 class OrbitType(Enum):
+    """
+    Enumerate the type of orbits
+    """
     precise = 1
     restituted = 2
 
@@ -30,7 +33,6 @@ class AbstractSession:
             max_workers: int = 3,
     ):
         """Download all the specified orbit products."""
-        pass
 
 
 class Client:
@@ -44,8 +46,8 @@ class Client:
     @abstractmethod
     def query_orbit_by_dt(
             self,
-            orbit_dts: List[datetime],
-            missions: Optional[List[str]],
+            orbit_dts: Sequence[datetime],
+            missions: Sequence[str],
             orbit_type: OrbitType,
             t0_margin: timedelta = T0,
             t1_margin: timedelta = T1,
@@ -56,21 +58,21 @@ class Client:
         Args:
             orbit_dts (list[str] or list[datetime.datetime]): datetime for orbit coverage
             missions (list[str]): optional, to specify S1A or S1B
-                No input downloads both, must be same len as orbit_dts
+                List of missions to query for. Must be same length as orbit_dts
             orbit_type (OrbitType): precise or restituted
+                String identifying the type of orbit file to query for.
 
         Returns:
             List of urls/ids that can be used in associated download function.
         """
-        pass
 
     @abstractmethod
     def query_orbits_by_dt_range(
             self,
             first_dt: datetime,
             last_dt: datetime,
-            missions: List[str],
-            orbit_type: OrbitType,
+            missions: Optional[Sequence[str]] = None,
+            orbit_type: OrbitType = OrbitType.precise,
     ):
         """
         Request orbit information according to a list of datetimes.
@@ -85,7 +87,6 @@ class Client:
         Returns:
             List of urls/ids that can be used in associated download function.
         """
-        pass
 
     def query_orbit_for_product(
             self,
@@ -125,4 +126,3 @@ class Client:
         """
         Authenticate on the client for downloading
         """
-        pass

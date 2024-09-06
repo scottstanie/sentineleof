@@ -30,7 +30,7 @@ import itertools
 import os
 from multiprocessing.pool import ThreadPool
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from dateutil.parser import parse
 from requests.exceptions import HTTPError
@@ -46,7 +46,7 @@ MAX_WORKERS = 6  # workers to download in parallel (for ASF backup)
 
 
 def download_eofs(
-    orbit_dts: Optional[List[datetime]] = None,
+    orbit_dts: Optional[Union[List[datetime], List[str]]] = None,
     missions=None,
     sentinel_file=None,
     save_dir=".",
