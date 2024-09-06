@@ -23,14 +23,22 @@ def check_netrc(netrc_file: Filename = "~/.netrc"):
         )
 
 
+def netrc_filename(netrc_file: Optional[Filename] = None) -> Path:
+    """
+    Returns ``netrc_file`` or $NETRC, or ``~/.netrc``
+    """
+    netrc_file = netrc_file or os.getenv('NETRC', "~/.netrc")
+    return Path(netrc_file).expanduser()
+
+
 def setup_netrc(
     netrc_file: Optional[Filename] = None,
     host: str = NASA_HOST,
     dryrun: bool = False,
 ):
     """Prompt user for NASA/Dataspace username/password, store as attribute of ~/.netrc."""
-    netrc_file = netrc_file or "~/.netrc"
-    netrc_file = Path(netrc_file).expanduser()
+    netrc_file = netrc_filename(netrc_file)
+    _logger.debug(f"Use the following netrc file: {netrc!r}")
     try:
         n = netrc.netrc(netrc_file)
         has_correct_permission = _file_is_0600(netrc_file)
@@ -93,8 +101,7 @@ def get_netrc_credentials(host: str, netrc_file: Optional[Filename] = None) -> t
     :return: username and password found for host in netrc_file
     :postcondition: username and password are non empty strings.
     """
-    netrc_file = netrc_file or "~/.netrc"
-    netrc_file = Path(netrc_file).expanduser()
+    netrc_file = netrc_filename(netrc_file)
     _logger.debug(f"Searching {host=!r} in {netrc_file=!r}")
     n = netrc.netrc(netrc_file)
     # _logger.debug(f"Hosts found: {n.hosts}")
@@ -116,6 +123,8 @@ def _get_username_pass(host: str):
         from .asf_client import SIGNUP_URL as signup_url
     elif host == DATASPACE_HOST:
         from .dataspace_client import SIGNUP_URL as signup_url
+    else:
+        raise ValueError(f"Unexpected {host=!r}")
 
     print(f"Please enter credentials for {host} to download data.")
     print(f"See the {signup_url} for signup info")
