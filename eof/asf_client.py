@@ -73,7 +73,7 @@ class ASFClient(Client):
     ):
         return self.get_download_urls(orbit_dts, missions, orbit_type)
 
-    def get_full_eof_list(self, orbit_type: OrbitType, max_dt) -> List[SentinelOrbit]:
+    def get_full_eof_list(self, orbit_type: OrbitType=OrbitType.precise, max_dt=None) -> List[SentinelOrbit]:
         """Get the list of orbit files from the ASF server."""
         if orbit_type not in self.urls.keys():
             raise ValueError(f"Unknown orbit type: {orbit_type.name}")

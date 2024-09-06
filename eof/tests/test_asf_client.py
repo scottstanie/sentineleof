@@ -3,6 +3,7 @@ import datetime
 import pytest
 
 from eof.asf_client import ASFClient
+from eof.client import OrbitType
 
 # pytest --record-mode=all
 
@@ -32,6 +33,6 @@ def test_asf_client_download(tmp_path):
 
     dt = datetime.datetime(2020, 1, 1)
     mission = "S1A"
-    urls = asfclient.get_download_urls([dt], [mission], orbit_type="precise")
+    urls = asfclient.get_download_urls([dt], [mission], orbit_type=OrbitType.precise)
     expected = "https://s1qc.asf.alaska.edu/aux_poeorb/S1A_OPER_AUX_POEORB_OPOD_20210315T155112_V20191230T225942_20200101T005942.EOF"  # noqa
     assert urls == [expected]
