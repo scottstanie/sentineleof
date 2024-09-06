@@ -1,10 +1,11 @@
 """Client to get orbit files from dataspace.copernicus.eu ."""
 from __future__ import annotations
+from abc import abstractmethod
 
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 import requests
 
@@ -13,7 +14,6 @@ from ._select_orbit import T_ORBIT
 from ._types import Filename
 from .client import Client, OrbitType, AbstractSession
 from .log import logger
-from .products import Sentinel as S1Product
 
 QUERY_URL = "https://catalogue.dataspace.copernicus.eu/odata/v1/Products"
 """Default URL endpoint for the Copernicus Data Space Ecosystem (CDSE) query REST service"""
@@ -116,40 +116,18 @@ class DataspaceClient(Client):
         satellite_id: str,
         product_type: str = "AUX_POEORB",
     ) -> list[dict]:
-        assert satellite_id in {"S1A", "S1B"}
-        assert product_type in {"AUX_POEORB", "AUX_RESORB"}
-        # return run_query(t0, t1, satellite_id, product_type)
-        # Construct the query based on the time range parsed from the input file
-        logger.info(
-            f"Querying for {product_type} orbit files from endpoint {QUERY_URL}"
-        )
-        query = _construct_orbit_file_query(satellite_id, product_type, t0, t1)
-        # Make the query to determine what Orbit files are available for the time
-        # range
-        return query_orbit_file_service(query)
-
-    def query_orbit_for_product(
-        self,
-        product,
-        orbit_type: OrbitType = OrbitType.precise,
-        t0_margin: timedelta = Client.T0,
-        t1_margin: timedelta = Client.T1,
-    ):
-        if isinstance(product, str):
-            product = S1Product(product)
-
-        return self.query_orbit_by_dt(
-            [product.start_time],
-            [product.mission],
-            orbit_type=orbit_type,
-            t0_margin=t0_margin,
-            t1_margin=t1_margin,
+        # Forward the call to the specialized Query objet
+        return _QueryOneOrbitFileAroundRange().query_orbit(
+                t0,
+                t1,
+                satellite_id,
+                product_type,
         )
 
     def query_orbit_by_dt(
         self,
-        orbit_dts,
-        missions,
+        orbit_dts : List[datetime],
+        missions : List[str],
         orbit_type: OrbitType = OrbitType.precise,
         t0_margin: timedelta = Client.T0,
         t1_margin: timedelta = Client.T1,
@@ -165,8 +143,51 @@ class DataspaceClient(Client):
             List of datetimes to query for
         missions : list[str], choices = {"S1A", "S1B"}
             List of missions to query for. Must be same length as orbit_dts
-        orbit_type : str, choices = {"precise", "restituted"}
+        orbit_type : OrbitType, choices = {"precise", "restituted"}
             String identifying the type of orbit file to query for.
+        t0_margin : timedelta
+            Margin to add to the start time of the orbit file in the query
+            Applies only to precise orbits
+        t1_margin : timedelta
+            Margin to add to the end time of the orbit file in the query
+            Applies only to precise orbits
+
+        Returns
+        -------
+        list[dict]
+            list of results from the query
+        """
+        # Forward the call to the specialized Query objet
+        return _QueryOneOrbitFileAroundRange().query_orbit_by_dt(
+                orbit_dts,
+                missions,
+                orbit_type,
+                t0_margin,
+                t1_margin,
+        )
+
+    def query_orbits_by_dt_range(
+        self,
+        first_dt: datetime,
+        last_dt: datetime,
+        missions : List[str],
+        orbit_type: OrbitType = OrbitType.precise,
+    ):
+        """Query the Copernicus dataspace API for product info for the specified missions/orbit_dts.
+
+        This method returns all orbit files that intersect the requested range.
+
+        Parameters
+        ----------
+        orbit_dts : list[datetime.datetime]
+            List of datetimes to query for
+        missions : list[str], choices = {"S1A", "S1B"}
+            List of missions to query for. Must be same length as orbit_dts
+        orbit_type : OrbitType, choices = {precise, restituted}
+            String identifying the type of orbit file to query for.
+            Search with restituted orbit is done when:
+            1. requested explicitly
+            2. or when nothing is found with precise orbit
         t0_margin : timedelta
             Margin to add to the start time of the orbit file in the query
         t1_margin : timedelta
@@ -177,124 +198,16 @@ class DataspaceClient(Client):
         list[dict]
             list of results from the query
         """
-        remaining_dates: list[tuple[str, datetime]] = []
-        all_results = []
-        for dt, mission in zip(orbit_dts, missions):
-            # Only check for precise orbits if that is what we want
-            if orbit_type == OrbitType.precise:
-                products = self.query_orbit(
-                    dt - t0_margin,
-                    dt + t1_margin,
-                    # dt - timedelta(seconds=T_ORBIT + 60),
-                    # dt + timedelta(seconds=60),
-                    mission,
-                    product_type="AUX_POEORB",
-                )
-                if len(products) == 1:
-                    result = products[0]
-                elif len(products) > 1:
-                    logger.warning(f"Found more than one result: {products}")
-                    result = products[0]
-                else:
-                    result = None
-            else:
-                result = None
-
-            if result is not None:
-                all_results.append(result)
-            else:
-                # try with RESORB
-                products = self.query_orbit(
-                    dt - timedelta(seconds=T_ORBIT + 60),
-                    dt + timedelta(seconds=60),
-                    mission,
-                    product_type="AUX_RESORB",
-                )
-                if len(products) == 1:
-                    result = products[0]
-                elif len(products) > 1:
-                    logger.warning(f"Found more than one result: {products}")
-                    result = products[0]
-                else:
-                    result = None
-                    logger.warning(f"Found no restituted results for {dt} {mission}")
-
-                if result:
-                    all_results.append(result)
-
-            if result is None:
-                remaining_dates.append((mission, dt))
-
-        if remaining_dates:
-            logger.warning("The following dates were not found: %s", remaining_dates)
-        return all_results
-
-    def download_all(
-        self,
-        query_results: list[dict],
-        output_directory: Filename,
-        max_workers: int = 3,
-    ):
-        """Download all the specified orbit products."""
-        return download_all(
-            query_results,
-            output_directory=output_directory,
-            access_token=self._access_token,
-            max_workers=max_workers,
+        # Forward the call to the specialized Query objet
+        return _QueryAllOrbitFileWithinRange().query_orbits_by_dt_range(
+                first_dt,
+                last_dt,
+                missions,
+                orbit_type,
         )
 
 
-def _construct_orbit_file_query(
-    mission_id: str, orbit_type: str, search_start: datetime, search_stop: datetime
-):
-    """Constructs the query used with the query URL to determine the
-    available Orbit files for the given time range.
-
-    Parameters
-    ----------
-    mission_id : str
-        The mission ID parsed from the SAFE file name, should always be one
-        of S1A or S1B.
-    orbit_type : str
-        String identifying the type of orbit file to query for. Should be either
-        POEORB for Precise Orbit files, or RESORB for Restituted.
-    search_start : datetime
-        The start time to use with the query in YYYYmmddTHHMMSS format.
-        Any resulting orbit files will have a starting time before this value.
-    search_stop : datetime
-        The stop time to use with the query in YYYYmmddTHHMMSS format.
-        Any resulting orbit files will have an ending time after this value.
-
-    Returns
-    -------
-    query : str
-        The Orbit file query string formatted as the query service expects.
-
-    """
-    # Set up templates that use the OData domain specific syntax expected by the
-    # query service
-    query_template = (
-        "startswith(Name,'{mission_id}') and contains(Name,'{orbit_type}') "
-        "and ContentDate/Start lt '{start_time}' and ContentDate/End gt '{stop_time}'"
-    )
-
-    # Format the query template using the values we were provided
-    query_start_date_str = search_start.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-    query_stop_date_str = search_stop.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-
-    query = query_template.format(
-        start_time=query_start_date_str,
-        stop_time=query_stop_date_str,
-        mission_id=mission_id,
-        orbit_type=orbit_type,
-    )
-
-    logger.debug(f"query: {query}")
-
-    return query
-
-
-def query_orbit_file_service(query: str) -> list[dict]:
+def query_orbit_file_service(query: str, how_many: int = 0) -> list[dict]:
     """Submit a request to the Orbit file query REST service.
 
     Parameters
@@ -320,9 +233,12 @@ def query_orbit_file_service(query: str) -> list[dict]:
     .. [1] https://documentation.dataspace.copernicus.eu/APIs/OData.html#query-by-sensing-date
     """
     # Set up parameters to be included with query request
-    query_params = {"$filter": query, "$orderby": "ContentDate/Start asc", "$top": 1}
+    query_params = {"$filter": query, "$orderby": "ContentDate/Start asc"}
+    if how_many > 0:
+        query_params["$top"] = str(how_many)
 
     # Make the HTTP GET request on the endpoint URL, no credentials are required
+    print(f"{query_params=}")
     response = requests.get(QUERY_URL, params=query_params)  # type: ignore
 
     logger.debug(f"response.url: {response.url}")
@@ -501,3 +417,235 @@ def download_all(
             downloaded_paths.append(f.result())
 
     return downloaded_paths
+
+
+class _QueryOrbitFile:
+    @abstractmethod
+    def _do_get_query_template(self) -> str:
+        pass
+
+    @abstractmethod
+    def _do_get_number_of_elements(self) -> int:
+        pass
+
+    def _construct_orbit_file_query(
+        self,
+        mission_id: str,
+        orbit_type: str,
+        search_start: datetime,
+        search_stop: datetime
+    ) -> str:
+        assert search_start < search_stop
+        # Set up templates that use the OData domain specific syntax expected by the
+        # query service
+
+        # Format the query template using the values we were provided
+        query_start_date_str = search_start.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        query_stop_date_str = search_stop.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+
+        query = self._do_get_query_template().format(
+            start_time=query_start_date_str,
+            stop_time=query_stop_date_str,
+            mission_id=mission_id,
+            orbit_type=orbit_type,
+        )
+
+        logger.debug(f"query: {query}")
+        print(f"query: {query}")
+
+        return query
+
+    def query_orbit(
+        self,
+        t0: datetime,
+        t1: datetime,
+        satellite_id: str,
+        product_type: str = "AUX_POEORB",
+    ) -> list[dict]:
+        assert satellite_id in {"S1A", "S1B"}
+        assert product_type in {"AUX_POEORB", "AUX_RESORB"}
+        # return run_query(t0, t1, satellite_id, product_type)
+        # Construct the query based on the time range parsed from the input file
+        logger.info(
+            f"Querying for {product_type} orbit files from endpoint {QUERY_URL}"
+        )
+        query = self._construct_orbit_file_query(satellite_id, product_type, t0, t1)
+        # Make the query to determine what Orbit files are available for the time
+        # range
+        return query_orbit_file_service(query, self._do_get_number_of_elements())
+
+    def _search_dt_range(
+        self,
+        first_dt: datetime,
+        last_dt: datetime,
+        mission : str,
+        orbit_type: OrbitType,
+    ):
+        expect_only_one_result = self._do_get_number_of_elements() == 1
+        all_results = []
+
+        # Only check for precise orbits if that is what we want
+        if orbit_type == OrbitType.precise:
+            products = self.query_orbit(
+                first_dt,
+                last_dt,
+                mission,
+                product_type="AUX_POEORB",
+            )
+            if len(products) > 1 and expect_only_one_result:
+                logger.warning(f"Found more than one result: {products}")
+                all_results.append(products[0])
+            else:
+                all_results.extend(products)
+        else:
+            products = None
+
+        if not products:
+            # try with RESORB
+            products = self.query_orbit(
+                first_dt,
+                last_dt,
+                mission,
+                product_type="AUX_RESORB",
+            )
+            if len(products) > 1 and expect_only_one_result:
+                logger.warning(f"Found more than one result: {products}")
+                all_results.append(products[0])
+            else:
+                all_results.extend(products)
+        return all_results
+
+
+class _QueryOneOrbitFileAroundRange(_QueryOrbitFile):
+    """
+    Query specialization for requesting the single orbit files that
+    contains the request time range.
+
+    The time range is expected to be short and under a day wide.
+    """
+    def query_orbit_by_dt(
+        self,
+        orbit_dts : List[datetime],
+        missions : List[str],
+        orbit_type: OrbitType = OrbitType.precise,
+        t0_margin: timedelta = Client.T0,
+        t1_margin: timedelta = Client.T1,
+    ):
+        remaining_dates: list[tuple[str, datetime]] = []
+        all_results = []
+        for dt, mission in zip(orbit_dts, missions):
+            # Only check for precise orbits if that is what we want
+            if orbit_type == OrbitType.precise:
+                first_dt = dt - t0_margin
+                last_dt = dt + t1_margin
+            else:
+                first_dt = dt - timedelta(seconds=T_ORBIT + 60)
+                last_dt = dt + timedelta(seconds=60)
+
+            results = self._search_dt_range(
+                    first_dt,
+                    last_dt,
+                    mission,
+                    orbit_type,
+            )
+            all_results.extend(results)
+            if not results:
+                remaining_dates.append((mission, dt))
+                logger.warning(f"Found no restituted results for {dt} {mission}")
+
+        if remaining_dates:
+            logger.warning("The following dates were not found: %s", remaining_dates)
+        return all_results
+
+    def _do_get_query_template(self) -> str:
+        """
+        Variation point that returns the specialized query request
+        template for obtaining a single orbit file that contains the
+        request time range.
+        """
+        query_template = (
+            "Collection/Name eq 'SENTINEL-1' "
+            "and startswith(Name,'{mission_id}') and contains(Name,'{orbit_type}') "
+            "and ContentDate/Start lt '{start_time}' and ContentDate/End gt '{stop_time}'"
+        )
+        return query_template
+
+    def _do_get_number_of_elements(self) -> int:
+        """
+        Variation point for $top query parameter: return at most one
+        orbit file.
+        """
+        return 1
+
+
+class _QueryAllOrbitFileWithinRange(_QueryOrbitFile):
+    """
+    Query specialization for requesting all orbit files that intersect a given range.
+    """
+    def query_orbits_by_dt_range(
+        self,
+        first_dt: datetime,
+        last_dt: datetime,
+        missions : List[str],
+        orbit_type: OrbitType = OrbitType.precise,
+    ):
+        """Query the Copernicus dataspace API for product info for the specified missions/orbit_dts.
+
+        Parameters
+        ----------
+        orbit_dts : list[datetime.datetime]
+            List of datetimes to query for
+        missions : list[str], choices = {"S1A", "S1B"}
+            List of missions to query for. Must be same length as orbit_dts
+        orbit_type : OrbitType, choices = {precise, restituted}
+            String identifying the type of orbit file to query for.
+            Search with restituted orbit is done when:
+            1. requested explicitly
+            2. or when nothing is found with precise orbit
+        t0_margin : timedelta
+            Margin to add to the start time of the orbit file in the query
+        t1_margin : timedelta
+            Margin to add to the end time of the orbit file in the query
+
+        Returns
+        -------
+        list[dict]
+            list of results from the query
+        """
+        all_results = []
+        for mission in missions:
+            results = self._search_dt_range(
+                    first_dt, last_dt,
+                    mission,
+                    orbit_type,
+            )
+            all_results.extend(results)
+
+        return all_results
+
+    def _do_get_query_template(self) -> str:
+        """
+        Variation point that returns the specialized query request
+        template for obtaining all orbit files within a time range.
+        """
+        # Notes:
+        # * > Crucial for the search performance is specifying the
+        #   > collection name. Example: Collection/Name eq ‘SENTINEL-3’
+        #   -- https://documentation.dataspace.copernicus.eu/APIs/OData.html#odata-products-endpoint
+        # * "'{start_time}' lt ContentDate/End" only returns 2 results
+        #   while "ContentDate/End gt '{start_time}'" returns all of them
+        query_template = (
+            "Collection/Name eq 'SENTINEL-1' "
+            "and startswith(Name,'{mission_id}') and contains(Name,'{orbit_type}') "
+            "and ContentDate/Start lt '{stop_time}' "
+            "and ContentDate/End gt '{start_time}'"
+        )
+        return query_template
+
+    def _do_get_number_of_elements(self) -> int:
+        """
+        Variation point for $top query parameter: return as many orbit
+        files as found (up to 20, which is Copernicus datasapce default
+        value for $top)
+        """
+        return 0

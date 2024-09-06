@@ -44,7 +44,7 @@ class Client:
     @abstractmethod
     def query_orbit_by_dt(
             self,
-            orbit_dts: Union[List[str], List[datetime]],
+            orbit_dts: List[datetime],
             missions: Optional[List[str]],
             orbit_type: OrbitType,
             t0_margin: timedelta = T0,
@@ -57,6 +57,29 @@ class Client:
             orbit_dts (list[str] or list[datetime.datetime]): datetime for orbit coverage
             missions (list[str]): optional, to specify S1A or S1B
                 No input downloads both, must be same len as orbit_dts
+            orbit_type (OrbitType): precise or restituted
+
+        Returns:
+            List of urls/ids that can be used in associated download function.
+        """
+        pass
+
+    @abstractmethod
+    def query_orbits_by_dt_range(
+            self,
+            first_dt: datetime,
+            last_dt: datetime,
+            missions: List[str],
+            orbit_type: OrbitType,
+    ):
+        """
+        Request orbit information according to a list of datetimes.
+
+        Args:
+            first_dt (str datetime.datetime): first datetime for orbit coverage
+            last_dt (str datetime.datetime): last datetime for orbit coverage
+            missions (list[str]): optional, to specify S1A or S1B
+                No input downloads both.
             orbit_type (OrbitType): precise or restituted
 
         Returns:
