@@ -28,7 +28,6 @@ from datetime import datetime
 import glob
 import itertools
 import os
-from multiprocessing.pool import ThreadPool
 from pathlib import Path
 from typing import List, Optional, Union
 
@@ -37,7 +36,7 @@ from requests.exceptions import HTTPError
 
 from ._types import Filename
 from .asf_client import ASFClient
-from .client import OrbitType
+from .client import AbstractSession, OrbitType
 from .dataspace_client import DataspaceClient
 from .log import logger
 from .products import Sentinel, SentinelOrbit
@@ -94,6 +93,7 @@ def download_eofs(
 
     # First make sure all are datetimes if given string
     orbit_dts = [parse(dt) if isinstance(dt, str) else dt for dt in orbit_dts]
+    session : AbstractSession
 
     filenames = []
     dataspace_successful = False
@@ -140,25 +140,12 @@ def download_eofs(
         if not force_asf:
             logger.warning("Dataspace failed, trying ASF")
 
-        asf_client = ASFClient(username=asf_user, password=asf_password, netrc_file=netrc_file)
-        urls = asf_client.get_download_urls(orbit_dts, missions, orbit_type=orbit_type)
-        # Download and save all links in parallel
-        pool = ThreadPool(processes=max_workers)
-        result_url_dict = {
-            pool.apply_async(
-                asf_client._download_and_write,
-                args=[url, save_dir],
-            ): url
-            for url in urls
-        }
-
-        for result, url in result_url_dict.items():
-            cur_filename = result.get()
-            if cur_filename is None:
-                logger.error("Failed to download orbit for %s", url)
-            else:
-                logger.info("Finished %s, saved to %s", url, cur_filename)
-                filenames.append(cur_filename)
+        asf_client = ASFClient()
+        session = asf_client.authenticate(username=asf_user, password=asf_password, netrc_file=netrc_file)
+        if session:
+            urls = asf_client.get_download_urls(orbit_dts, missions, orbit_type=orbit_type)
+            results = session.download_all(urls, save_dir, max_workers)
+            filenames.extend(results)
 
     return filenames
 

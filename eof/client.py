@@ -56,7 +56,7 @@ class Client:
         Request orbit information according to a list of datetimes.
 
         Args:
-            orbit_dts (list[str] or list[datetime.datetime]): datetime for orbit coverage
+            orbit_dts (list[datetime.datetime]): datetime for orbit coverage
             missions (list[str]): optional, to specify S1A or S1B
                 List of missions to query for. Must be same length as orbit_dts
             orbit_type (OrbitType): precise or restituted
