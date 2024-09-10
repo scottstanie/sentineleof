@@ -12,7 +12,7 @@ import requests
 
 
 from ._auth import NASA_HOST, get_netrc_credentials
-from ._select_orbit import T_ORBIT, ValidityError, last_valid_orbit
+from ._select_orbit import T_ORBIT, ValidityError, last_valid_orbit, valid_orbits
 from ._types import Filename
 from .client import AbstractSession, Client, OrbitType
 from .log import logger
@@ -241,7 +241,7 @@ class ASFClient(Client):
                 logger.warning(f"{max_saved} is older than requested {max_dt}")
                 self._clear_cache(orbit_type)
             else:
-                logger.info("Using cached EOF list")
+                logger.info("Using %s elements from cached EOF list", len(eof_list))
                 self.eof_lists[orbit_type] = eof_list
                 return eof_list
 
@@ -310,6 +310,37 @@ class ASFClient(Client):
                 )
 
         return urls
+
+    def query_orbits_by_dt_range(
+        self,
+        first_dt: datetime,
+        last_dt: datetime,
+        missions: Sequence[str] = (),
+        orbit_type: OrbitType = OrbitType.precise,
+    ) -> List[str]:
+        orbits = self.query_orbit_files_by_dt_range(first_dt, last_dt, missions, orbit_type)
+        urls = [self.urls[orbit_type] + orbit.filename for orbit in orbits]
+        return urls
+
+    def query_orbit_files_by_dt_range(
+        self,
+        first_dt: datetime,
+        last_dt: datetime,
+        missions: Sequence[str] = (),
+        orbit_type: OrbitType = OrbitType.precise,
+    ) -> List[SentinelOrbit]:
+        eof_list = self.get_full_eof_list(orbit_type=orbit_type, max_dt=last_dt)
+        missions = missions or ("S1A", "S1B")
+        # Split up for quicker parsing of the latest one
+        mission_to_eof_list = {
+            "S1A": [eof for eof in eof_list if eof.mission == "S1A"],
+            "S1B": [eof for eof in eof_list if eof.mission == "S1B"],
+        }
+        orbits = []
+        for mission in missions:
+            orbits.extend(valid_orbits(last_dt, first_dt, mission_to_eof_list[mission]))
+
+        return orbits
 
     def _get_cached_filenames(
             self,
