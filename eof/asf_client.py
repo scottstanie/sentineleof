@@ -180,23 +180,24 @@ class ASFClient(Client):
     precise_url = "https://s1qc.asf.alaska.edu/aux_poeorb/"
     res_url = "https://s1qc.asf.alaska.edu/aux_resorb/"
     urls = {OrbitType.precise: precise_url, OrbitType.restituted: res_url}
-    eof_lists : Dict[OrbitType, Optional[Sequence[SentinelOrbit]]] = {
-            OrbitType.precise: None,
-            OrbitType.restituted: None
-    }
 
     def __init__(
         self,
         cache_dir: Optional[Filename] = None,
     ):
         self._cache_dir = cache_dir
+        # Non-static member data in order to play with different data in tests
+        self.eof_lists : Dict[OrbitType, Optional[Sequence[SentinelOrbit]]] = {
+                OrbitType.precise: None,
+                OrbitType.restituted: None
+        }
 
     def authenticate(self, *args, **kwargs) -> ASFSession:
         """
         Authenticate to the client.
 
         The authentication will try to use in order:
-        1. ``username`` + ``password`` 
+        1. ``username`` + ``password``
         2. dataspace entry from ``netrc_file`` (or $NETRC, or ``~/.netrc``)
 
         Args:
