@@ -319,6 +319,24 @@ class ASFClient(Client):
         missions: Sequence[str] = (),
         orbit_type: OrbitType = OrbitType.precise,
     ) -> List[str]:
+        """Query the ASF API for product URLs for the specified missions/orbit time range.
+
+        This method returns the URLs of all orbit files that intersect the requested range.
+
+        Parameters
+        ----------
+        first_dt (str datetime.datetime): first datetime for orbit coverage
+        last_dt (str datetime.datetime): last datetime for orbit coverage
+        missions (list[str]): optional, to specify S1A or S1B
+            No input downloads both.
+        orbit_type : OrbitType, choices = {precise, restituted}
+
+        Returns
+        -------
+        list[str]
+            list of urls to files to download.
+            This result can be directly used by:method:`DataspaceClient.download_all`.
+        """
         orbits = self.query_orbit_files_by_dt_range(first_dt, last_dt, missions, orbit_type)
         urls = [self.urls[orbit_type] + orbit.filename for orbit in orbits]
         return urls
@@ -330,6 +348,24 @@ class ASFClient(Client):
         missions: Sequence[str] = (),
         orbit_type: OrbitType = OrbitType.precise,
     ) -> List[SentinelOrbit]:
+        """Query the ASF API for product info for the specified missions/orbit time range.
+
+        This method returns the information of all orbit files that intersect the requested range.
+
+        Parameters
+        ----------
+        first_dt (str datetime.datetime): first datetime for orbit coverage
+        last_dt (str datetime.datetime): last datetime for orbit coverage
+        missions (list[str]): optional, to specify S1A or S1B
+            No input downloads both.
+        orbit_type : OrbitType, choices = {precise, restituted}
+
+        Returns
+        -------
+        list[SentinelOrbit]
+            list of information about the files to download
+            This result CANNOT be directly used by:method:`DataspaceClient.download_all`.
+        """
         eof_list = self.get_full_eof_list(orbit_type=orbit_type, max_dt=last_dt)
         missions = missions or ("S1A", "S1B")
         # Split up for quicker parsing of the latest one

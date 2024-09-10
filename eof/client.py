@@ -32,7 +32,7 @@ class AbstractSession:
             eofs,
             output_directory: Filename,
             max_workers: int = 3,
-    ) -> List[Path]:
+    ) -> Union[List[Path], List[Filename]]:
         """Download all the specified orbit products."""
 
 
@@ -76,7 +76,7 @@ class Client:
             orbit_type: OrbitType = OrbitType.precise,
     ) -> Union[List[dict],List[str]]:
         """
-        Request orbit information according to a list of datetimes.
+        Request orbit information according to a range of datetimes.
 
         Args:
             first_dt (str datetime.datetime): first datetime for orbit coverage

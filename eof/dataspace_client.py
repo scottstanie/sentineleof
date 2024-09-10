@@ -159,6 +159,10 @@ class DataspaceClient(Client):
             List of missions to query for. Must be same length as orbit_dts
         orbit_type (OrbitType): precise or restituted
             String identifying the type of orbit file to query for.
+
+            Search with restituted orbit is done when:
+            1. requested explicitly
+            2. or when nothing is found with precise orbit
         t0_margin : timedelta
             Margin to add to the start time of the orbit file in the query
             Applies only to precise orbits
@@ -187,30 +191,27 @@ class DataspaceClient(Client):
         missions: Sequence[str] = (),
         orbit_type: OrbitType = OrbitType.precise,
     ) -> List[dict]:
-        """Query the Copernicus dataspace API for product info for the specified missions/orbit_dts.
+        """Query the Copernicus dataspace API for product info for the specified missions/orbit time range.
 
-        This method returns all orbit files that intersect the requested range.
+        This method returns the information all orbit files that intersect the requested range.
 
         Parameters
         ----------
-        orbit_dts : list[datetime.datetime]
-            List of datetimes to query for
+        first_dt (str datetime.datetime): first datetime for orbit coverage
+        last_dt (str datetime.datetime): last datetime for orbit coverage
         missions (list[str]): optional, to specify S1A or S1B
             No input downloads both.
         orbit_type : OrbitType, choices = {precise, restituted}
-            String identifying the type of orbit file to query for.
+
             Search with restituted orbit is done when:
             1. requested explicitly
             2. or when nothing is found with precise orbit
-        t0_margin : timedelta
-            Margin to add to the start time of the orbit file in the query
-        t1_margin : timedelta
-            Margin to add to the end time of the orbit file in the query
 
         Returns
         -------
         list[dict]
-            list of results from the query
+            list of results from the query.
+            This result can be directly used by:method:`DataspaceClient.download_all`.
         """
         # Forward the call to the specialized Query objet
         return _QueryAllOrbitFileWithinRange().query_orbits_by_dt_range(

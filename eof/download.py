@@ -123,7 +123,9 @@ def download_eofs(
                 logger.info("Attempting download from Copernicus Dataspace")
                 try:
                     results = session.download_all(
-                        query, output_directory=save_dir, max_workers=max_workers
+                        query,  # type: ignore
+                        output_directory=save_dir,
+                        max_workers=max_workers
                     )
                     filenames.extend(results)
                     dataspace_successful = True
@@ -144,7 +146,10 @@ def download_eofs(
         session = asf_client.authenticate(username=asf_user, password=asf_password, netrc_file=netrc_file)
         if session:
             urls = asf_client.get_download_urls(orbit_dts, missions, orbit_type=orbit_type)
-            results = session.download_all(urls, save_dir, max_workers)
+            results = session.download_all(
+                    urls,  # type: ignore
+                    save_dir,
+                    max_workers)
             filenames.extend(results)
 
     return filenames
