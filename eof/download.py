@@ -46,10 +46,10 @@ MAX_WORKERS = 6  # workers to download in parallel (for ASF backup)
 
 def download_eofs(
     orbit_dts: Optional[Union[List[datetime], List[str]]] = None,
-    missions=None,
+    missions=(),
     sentinel_file=None,
     save_dir=".",
-    orbit_type="precise",
+    orbit_type=OrbitType.precise,
     force_asf: bool = False,
     asf_user: str = "",
     asf_password: str = "",
@@ -89,7 +89,7 @@ def download_eofs(
     if missions and all(m not in ("S1A", "S1B") for m in missions):
         raise ValueError('missions argument must be "S1A" or "S1B"')
     if not missions:
-        missions = itertools.repeat(None)
+        missions = itertools.repeat('')
 
     # First make sure all are datetimes if given string
     orbit_dts = [parse(dt) if isinstance(dt, str) else dt for dt in orbit_dts]
@@ -231,7 +231,7 @@ def main(
 
     if sentinel_file:
         # Handle parsing in download_eof
-        orbit_dts, missions = None, None
+        orbit_dts, missions = None, []
     elif date:
         missions = [mission] if mission else ["S1A", "S1B"]
         orbit_dts = [parse(date)] * len(missions)

@@ -4,7 +4,8 @@
 from abc import abstractmethod
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Optional, Sequence, Union
+from pathlib import Path
+from typing import List, Sequence, Union
 
 from ._select_orbit import T_ORBIT
 from ._types import Filename
@@ -31,7 +32,7 @@ class AbstractSession:
             eofs,
             output_directory: Filename,
             max_workers: int = 3,
-    ):
+    ) -> List[Path]:
         """Download all the specified orbit products."""
 
 
@@ -51,7 +52,7 @@ class Client:
             orbit_type: OrbitType,
             t0_margin: timedelta = T0,
             t1_margin: timedelta = T1,
-    ):
+    ) -> Union[List[dict],List[str]]:
         """
         Request orbit information according to a list of datetimes.
 
@@ -71,9 +72,9 @@ class Client:
             self,
             first_dt: datetime,
             last_dt: datetime,
-            missions: Optional[Sequence[str]] = None,
+            missions: Sequence[str] = (),
             orbit_type: OrbitType = OrbitType.precise,
-    ):
+    ) -> Union[List[dict],List[str]]:
         """
         Request orbit information according to a list of datetimes.
 
@@ -94,7 +95,7 @@ class Client:
             orbit_type: OrbitType = OrbitType.precise,
             t0_margin: timedelta = T0,
             t1_margin: timedelta = T1,
-    ):
+    ) -> Union[List[dict],List[str]]:
         """
         Request orbit information according to a Sentinel-1 filename
 

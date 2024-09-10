@@ -5,7 +5,7 @@ from abc import abstractmethod
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import Iterable, List, Optional, Sequence
 
 import requests
 
@@ -73,10 +73,10 @@ class DataspaceSession(AbstractSession):
 
     def download_all(
         self,
-        eofs: list[dict],
+        eofs: Sequence[dict],
         output_directory: Filename,
         max_workers: int = 3,
-    ):
+    ) -> List[Path]:
         """Download all the specified orbit products."""
         return download_all(
             query_results=eofs,
@@ -141,11 +141,11 @@ class DataspaceClient(Client):
     def query_orbit_by_dt(
         self,
         orbit_dts : Sequence[datetime],
-        missions : Sequence[str],
+        missions : Iterable[str],
         orbit_type: OrbitType = OrbitType.precise,
         t0_margin: timedelta = Client.T0,
         t1_margin: timedelta = Client.T1,
-    ):
+    ) -> List[dict]:
         """Query the Copernicus dataspace API for product info for the specified missions/orbit_dts.
 
         This method returns a single orbit file that completely includes
@@ -184,9 +184,9 @@ class DataspaceClient(Client):
         self,
         first_dt: datetime,
         last_dt: datetime,
-        missions: Optional[Sequence[str]] = None,
+        missions: Sequence[str] = (),
         orbit_type: OrbitType = OrbitType.precise,
-    ):
+    ) -> List[dict]:
         """Query the Copernicus dataspace API for product info for the specified missions/orbit_dts.
 
         This method returns all orbit files that intersect the requested range.
@@ -370,11 +370,11 @@ def download_orbit_file(
 
 
 def download_all(
-    query_results: list[dict],
+    query_results: Sequence[dict],
     output_directory: Filename,
     access_token: Optional[str],
     max_workers: int = 3,
-) -> list[Path]:
+) -> List[Path]:
     """Download all the specified orbit products.
 
     Parameters
@@ -519,7 +519,7 @@ class _QueryOrbitFile:
         last_dt: datetime,
         mission : str,
         orbit_type: OrbitType,
-    ):
+    ) -> List[dict]:
         """
         Internal method that wraps :method:`_QueryOrbitFile.query_orbit`.
 
@@ -572,11 +572,11 @@ class _QueryOneOrbitFileAroundRange(_QueryOrbitFile):
     def query_orbit_by_dt(
         self,
         orbit_dts : Sequence[datetime],
-        missions : Sequence[str],
+        missions : Iterable[str],
         orbit_type: OrbitType = OrbitType.precise,
         t0_margin: timedelta = Client.T0,
         t1_margin: timedelta = Client.T1,
-    ):
+    ) -> List[dict]:
         """Query the Copernicus dataspace API for product info for the specified missions/orbit_dts.
 
         This method returns a single orbit file that completely includes
@@ -657,9 +657,9 @@ class _QueryAllOrbitFileWithinRange(_QueryOrbitFile):
         self,
         first_dt: datetime,
         last_dt: datetime,
-        missions: Optional[Sequence[str]],
+        missions: Sequence[str] = (),
         orbit_type: OrbitType = OrbitType.precise,
-    ):
+    ) -> List[dict]:
         """Query the Copernicus dataspace API for product info for the specified missions/orbit_dts.
 
         Parameters

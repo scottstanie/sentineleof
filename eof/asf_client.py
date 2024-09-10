@@ -5,7 +5,7 @@ from multiprocessing.pool import ThreadPool
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Union
+from typing import Dict, Iterable, List, Optional, Sequence
 from zipfile import ZipFile
 
 import requests
@@ -223,7 +223,7 @@ class ASFClient(Client):
     def get_full_eof_list(
             self,
             orbit_type: OrbitType = OrbitType.precise,
-            max_dt = None
+            max_dt : Optional[datetime] = None
     ) -> Sequence[SentinelOrbit]:
         """Get the list of orbit files from the ASF server."""
         if orbit_type not in self.urls:
@@ -236,7 +236,7 @@ class ASFClient(Client):
             eof_list = self._get_cached_filenames(orbit_type)
             # Need to clear it if it's older than what we're looking for
             max_saved = max((e.start_time for e in eof_list))
-            if max_saved < max_dt:
+            if not max_dt or (max_saved < max_dt):
                 logger.warning(f"Clearing cached {orbit_type.name} EOF list:")
                 logger.warning(f"{max_saved} is older than requested {max_dt}")
                 self._clear_cache(orbit_type)
@@ -258,7 +258,7 @@ class ASFClient(Client):
     def get_download_urls(
             self,
             orbit_dts: Sequence[datetime],
-            missions: Sequence[str],
+            missions: Iterable[str],
             orbit_type: OrbitType = OrbitType.precise
     ) -> List[str]:
         """Find the URL for an orbit file covering the specified datetime
