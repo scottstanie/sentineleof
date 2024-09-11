@@ -38,6 +38,7 @@ jobs:
         chmod 600 ~/.netrc
     - name: Setup cache of ASF EOF files
       run: |
+        mkdir -p ~/.cache/sentineleof/
         cp eof/tests/baseline/precise_filenames.txt ~/.cache/sentineleof/
     - name: Test with pytest
       run: |
