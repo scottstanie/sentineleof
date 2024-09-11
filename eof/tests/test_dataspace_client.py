@@ -55,6 +55,7 @@ def test_dataspace_query_orbit_by_dt_range():
 
 
 @pytest.mark.skip("Dataspace stopped carrying resorbs older than 3 months")
+@pytest.mark.vcr
 def test_query_resorb_edge_case():
     p = Sentinel(
         "S1A_IW_SLC__1SDV_20230823T154908_20230823T154935_050004_060418_521B.zip"

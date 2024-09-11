@@ -20,12 +20,10 @@ def generate_asfclient() -> ASFClient:
     return baseline_asfclient
 
 
-@pytest.mark.vcr
 def test_asf_client():
     ASFClient()
 
 
-@pytest.mark.vcr
 def test_asf_read_from_cached_baseline(asfclient):
     """
     Sanity check: the baseline can be loaded
@@ -55,7 +53,6 @@ def test_asf_full_url_list(tmp_path, asfclient: ASFClient):
     assert baseline_urls <= remote_urls, "We expect ASF won't remove old EOF products..."
 
 
-@pytest.mark.vcr
 def test_asf_query_orbit_files_by_dt_range(asfclient: ASFClient):
     dt1 = datetime.datetime(2020, 1, 1)   # 00:00:00
     dt2 = datetime.datetime(2020, 1, 12)  # 00:00:00
@@ -84,7 +81,6 @@ def test_asf_query_orbit_urls_by_dt_range(asfclient: ASFClient):
     assert results[0] == expected
 
 
-@pytest.mark.vcr
 def test_asf_client_download(asfclient: ASFClient):
     dt = datetime.datetime(2020, 1, 1)
     mission = "S1A"
