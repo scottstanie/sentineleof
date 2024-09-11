@@ -1,0 +1,47 @@
+interactions:
+- request:
+    body: client_id=cdse-public&grant_type=password
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '114'
+      Content-Type:
+      - application/x-www-form-urlencoded
+      User-Agent:
+      - python-requests/2.31.0
+    method: POST
+    uri: https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token
+  response:
+    body:
+      string: '{"access_token": "REDACTED_access_token", "expires_in": 600, "refresh_expires_in":
+        3600, "refresh_token": "REDACTED_refresh_token", "token_type": "Bearer", "not-before-policy":
+        0, "session_state": "05768e37-280e-47cb-988a-5466333578b3", "scope": "AUDIENCE_PUBLIC
+        openid email profile ondemand_processing user-context"}'
+    headers:
+      cache-control:
+      - no-store
+      content-length:
+      - '3415'
+      content-type:
+      - application/json
+      pragma:
+      - no-cache
+      referrer-policy:
+      - no-referrer
+      strict-transport-security:
+      - max-age=31536000; includeSubDomains
+      x-content-type-options:
+      - nosniff
+      x-frame-options:
+      - ALLOW-FROM https://www.google.com
+      x-xss-protection:
+      - 1; mode=block
+    status:
+      code: 200
+      message: OK
+version: 1
