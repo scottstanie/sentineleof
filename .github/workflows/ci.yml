@@ -36,6 +36,9 @@ jobs:
         echo "  login asdf" >> ~/.netrc
         echo "  password asdf" >> ~/.netrc
         chmod 600 ~/.netrc
+    - name: Setup cache of ASF EOF files
+      run: |
+        cp eof/tests/baseline/precise_filenames.txt ~/.cache/sentineleof/
     - name: Test with pytest
       run: |
         python -m pytest -v --doctest-modules --ignore=eof/__main__.py
