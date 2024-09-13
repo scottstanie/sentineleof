@@ -2,7 +2,6 @@ import datetime
 import os
 
 import pytest
-from sortedcontainers import SortedSet
 
 from eof.asf_client import ASFClient
 from eof.client import OrbitType
@@ -39,13 +38,13 @@ def test_asf_full_url_list(tmp_path, asfclient: ASFClient):
     - we can request EOFs available on ASF servers
     - the EOFs obtained are a superset (more up-to-date) that the baseline
     """
-    baseline_urls = SortedSet((eof.filename for eof in asfclient.get_full_eof_list(max_dt=MAX_DT)))
+    baseline_urls = set((eof.filename for eof in asfclient.get_full_eof_list(max_dt=MAX_DT)))
 
     cache_dir = tmp_path / "sentineleof1"
     cache_dir.mkdir()
     remote_asfclient = ASFClient(cache_dir=cache_dir)
 
-    remote_urls = SortedSet((eof.filename for eof in remote_asfclient.get_full_eof_list(max_dt=MAX_DT)))
+    remote_urls = set((eof.filename for eof in remote_asfclient.get_full_eof_list(max_dt=MAX_DT)))
     assert len(remote_urls) > 0
     # Should be quick second time
     assert len(remote_asfclient.get_full_eof_list(max_dt=MAX_DT))

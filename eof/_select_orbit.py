@@ -4,7 +4,6 @@ from __future__ import annotations
 import operator
 from datetime import datetime, timedelta
 from typing import List, Sequence
-from sortedcontainers import SortedList
 
 from .products import SentinelOrbit
 
@@ -29,7 +28,7 @@ def valid_orbits(
 ) -> List[SentinelOrbit]:
     # Using a start margin of > 1 orbit so that the start of the orbit file will
     # cover the ascending node crossing of the acquisition
-    candidates = SortedList([
+    candidates = sorted([
         item
         for item in data
         if item.start_time <= (t0 - margin0) and item.stop_time >= (t1 + margin1)

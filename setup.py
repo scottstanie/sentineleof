@@ -29,7 +29,6 @@ setuptools.setup(
         "requests",
         "click",
         "python-dateutil",
-        "sortedcontainers",
     ],
     entry_points={
         "console_scripts": [
