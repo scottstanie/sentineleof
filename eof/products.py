@@ -25,7 +25,7 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime
+from datetime import datetime, date
 
 __all__ = ["Sentinel", "SentinelOrbit"]
 
@@ -157,7 +157,7 @@ class Sentinel(Base):
         return hash(self.product_uid)
 
     @property
-    def start_time(self):
+    def start_time(self) -> datetime:
         """Returns start datetime from a sentinel file name
 
         Example:
@@ -169,7 +169,7 @@ class Sentinel(Base):
         return datetime.strptime(start_time_str, self.TIME_FMT)
 
     @property
-    def stop_time(self):
+    def stop_time(self) -> datetime:
         """Returns stop datetime from a sentinel file name
 
         Example:
@@ -181,7 +181,7 @@ class Sentinel(Base):
         return datetime.strptime(stop_time_str, self.TIME_FMT)
 
     @property
-    def polarization(self):
+    def polarization(self) -> str:
         """Returns type of polarization of product
 
         Example:
@@ -192,7 +192,7 @@ class Sentinel(Base):
         return self._get_field("polarization")
 
     @property
-    def product_type(self):
+    def product_type(self) -> str:
         """Returns product type/level
 
         Example:
@@ -208,7 +208,7 @@ class Sentinel(Base):
         return self.product_type
 
     @property
-    def mission(self):
+    def mission(self) -> str:
         """Returns satellite/mission of product (S1A/S1B)
 
         Example:
@@ -219,7 +219,7 @@ class Sentinel(Base):
         return self._get_field("mission")
 
     @property
-    def absolute_orbit(self):
+    def absolute_orbit(self) -> int:
         """Absolute orbit of data, included in file name
 
         Example:
@@ -230,7 +230,7 @@ class Sentinel(Base):
         return int(self._get_field("orbit_number"))
 
     @property
-    def relative_orbit(self):
+    def relative_orbit(self) -> int:
         """Relative orbit number/ path
 
         Formulas for relative orbit from absolute come from:
@@ -248,19 +248,20 @@ class Sentinel(Base):
             return ((self.absolute_orbit - 73) % 175) + 1
         elif self.mission == "S1B":
             return ((self.absolute_orbit - 27) % 175) + 1
+        raise ValueError(f"Invalid mission {self.mission!r}")
 
     @property
-    def path(self):
+    def path(self) -> int:
         """Alias for relative orbit number"""
         return self.relative_orbit
 
     @property
-    def product_uid(self):
+    def product_uid(self) -> str:
         """Unique identifier of product (last 4 of filename)"""
         return self._get_field("unique_id")
 
     @property
-    def date(self):
+    def date(self) -> date:
         """Date of acquisition: shortcut for start_time.date()"""
         return self.start_time.date()
 
@@ -339,7 +340,7 @@ class SentinelOrbit(Base):
         )
 
     @property
-    def mission(self):
+    def mission(self) -> str:
         """Returns satellite/mission of product (S1A/S1B)
 
         Example:
@@ -350,7 +351,7 @@ class SentinelOrbit(Base):
         return self._get_field("mission")
 
     @property
-    def start_time(self):
+    def start_time(self) -> datetime:
         """Returns start datetime of an orbit
 
         Example:
@@ -362,7 +363,7 @@ class SentinelOrbit(Base):
         return datetime.strptime(start_time_str, self.TIME_FMT)
 
     @property
-    def stop_time(self):
+    def stop_time(self) -> datetime:
         """Returns stop datetime from a sentinel file name
 
         Example:
@@ -374,7 +375,7 @@ class SentinelOrbit(Base):
         return datetime.strptime(stop_time_str, self.TIME_FMT)
 
     @property
-    def created_time(self):
+    def created_time(self) -> datetime:
         """Returns created datetime from a orbit file name
 
         Example:
@@ -386,7 +387,7 @@ class SentinelOrbit(Base):
         return datetime.strptime(stop_time_str, self.TIME_FMT)
 
     @property
-    def orbit_type(self):
+    def orbit_type(self) -> str:
         """Type of orbit file (e.g precise, restituted)
 
         Example:
@@ -408,6 +409,6 @@ class SentinelOrbit(Base):
             raise ValueError("unknown orbit type: %s" % self.filename)
 
     @property
-    def date(self):
+    def date(self) -> date:
         """Date of acquisition: shortcut for start_time.date()"""
         return self.start_time.date()

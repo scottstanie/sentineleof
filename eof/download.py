@@ -23,19 +23,20 @@ See parsers for Sentinel file naming description
 """
 
 from __future__ import annotations
+from datetime import datetime
 
 import glob
 import itertools
 import os
-from multiprocessing.pool import ThreadPool
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional, Union
 
 from dateutil.parser import parse
 from requests.exceptions import HTTPError
 
 from ._types import Filename
 from .asf_client import ASFClient
+from .client import AbstractSession, OrbitType
 from .dataspace_client import DataspaceClient
 from .log import logger
 from .products import Sentinel, SentinelOrbit
@@ -44,11 +45,11 @@ MAX_WORKERS = 6  # workers to download in parallel (for ASF backup)
 
 
 def download_eofs(
-    orbit_dts=None,
-    missions=None,
+    orbit_dts: Optional[Union[List[datetime], List[str]]] = None,
+    missions=(),
     sentinel_file=None,
     save_dir=".",
-    orbit_type="precise",
+    orbit_type=OrbitType.precise,
     force_asf: bool = False,
     asf_user: str = "",
     asf_password: str = "",
@@ -77,32 +78,37 @@ def download_eofs(
             having different lengths, or `sentinel_file` being invalid
     """
     # TODO: condense list of same dates, different hours?
-    if missions and all(m not in ("S1A", "S1B") for m in missions):
-        raise ValueError('missions argument must be "S1A" or "S1B"')
     if sentinel_file:
         sent = Sentinel(sentinel_file)
         orbit_dts, missions = [sent.start_time], [sent.mission]
-    if missions and len(missions) != len(orbit_dts):
+    elif not orbit_dts:
+        raise AssertionError("Either sentinel_file or orbit_dts shall be set!")
+
+    if missions and orbit_dts and len(missions) != len(orbit_dts):
         raise ValueError("missions arg must be same length as orbit_dts")
+    if missions and all(m not in ("S1A", "S1B") for m in missions):
+        raise ValueError('missions argument must be "S1A" or "S1B"')
     if not missions:
-        missions = itertools.repeat(None)
+        missions = itertools.repeat('')
 
     # First make sure all are datetimes if given string
     orbit_dts = [parse(dt) if isinstance(dt, str) else dt for dt in orbit_dts]
+    session : AbstractSession
 
     filenames = []
     dataspace_successful = False
 
     # First, check that Scihub isn't having issues
     if not force_asf:
-        client = DataspaceClient(
+        client = DataspaceClient()
+        session = client.authenticate(
             access_token=cdse_access_token,
             username=cdse_user,
             password=cdse_password,
             token_2fa=cdse_2fa_token,
             netrc_file=netrc_file,
         )
-        if client:
+        if session:
             # try to search on scihub
             if sentinel_file:
                 query = client.query_orbit_for_product(
@@ -114,10 +120,12 @@ def download_eofs(
                 )
 
             if query:
-                logger.info("Attempting download from SciHub")
+                logger.info("Attempting download from Copernicus Dataspace")
                 try:
-                    results = client.download_all(
-                        query, output_directory=save_dir, max_workers=max_workers
+                    results = session.download_all(
+                        query,  # type: ignore
+                        output_directory=save_dir,
+                        max_workers=max_workers
                     )
                     filenames.extend(results)
                     dataspace_successful = True
@@ -134,25 +142,15 @@ def download_eofs(
         if not force_asf:
             logger.warning("Dataspace failed, trying ASF")
 
-        asf_client = ASFClient(username=asf_user, password=asf_password, netrc_file=netrc_file)
-        urls = asf_client.get_download_urls(orbit_dts, missions, orbit_type=orbit_type)
-        # Download and save all links in parallel
-        pool = ThreadPool(processes=max_workers)
-        result_url_dict = {
-            pool.apply_async(
-                asf_client._download_and_write,
-                args=[url, save_dir],
-            ): url
-            for url in urls
-        }
-
-        for result, url in result_url_dict.items():
-            cur_filename = result.get()
-            if cur_filename is None:
-                logger.error("Failed to download orbit for %s", url)
-            else:
-                logger.info("Finished %s, saved to %s", url, cur_filename)
-                filenames.append(cur_filename)
+        asf_client = ASFClient()
+        session = asf_client.authenticate(username=asf_user, password=asf_password, netrc_file=netrc_file)
+        if session:
+            urls = asf_client.get_download_urls(orbit_dts, missions, orbit_type=orbit_type)
+            results = session.download_all(
+                    urls,  # type: ignore
+                    save_dir,
+                    max_workers)
+            filenames.extend(results)
 
     return filenames
 
@@ -173,7 +171,7 @@ def find_unique_safes(search_path):
         try:
             parsed_file = Sentinel(filename)
         except ValueError:  # Doesn't match a sentinel file
-            logger.debug("Skipping {}, not a Sentinel 1 file".format(filename))
+            logger.debug(f"Skipping {filename!r}, not a Sentinel 1 file")
             continue
         file_set.add(parsed_file)
     return file_set
@@ -216,7 +214,7 @@ def main(
     sentinel_file=None,
     mission=None,
     date=None,
-    orbit_type="precise",
+    orbit_type: OrbitType = OrbitType.precise,
     force_asf: bool = False,
     asf_user: str = "",
     asf_password: str = "",
@@ -238,7 +236,7 @@ def main(
 
     if sentinel_file:
         # Handle parsing in download_eof
-        orbit_dts, missions = None, None
+        orbit_dts, missions = None, []
     elif date:
         missions = [mission] if mission else ["S1A", "S1B"]
         orbit_dts = [parse(date)] * len(missions)
