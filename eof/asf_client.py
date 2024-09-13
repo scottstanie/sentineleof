@@ -375,7 +375,14 @@ class ASFClient(Client):
         }
         orbits = []
         for mission in missions:
-            orbits.extend(valid_orbits(last_dt, first_dt, mission_to_eof_list[mission]))
+            assert mission in ("S1A", "S1B"), f"Invalid {mission=!r}"
+            orbits.extend(valid_orbits(
+                last_dt,
+                first_dt,
+                mission_to_eof_list[mission],
+                timedelta(0),
+                timedelta(0),
+            ))
 
         return orbits
 

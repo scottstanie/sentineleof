@@ -59,7 +59,7 @@ def test_asf_query_orbit_files_by_dt_range(asfclient: ASFClient):
     # Restituted seems to fail for old dates...
     # Need to look into sentinelsat, or if ESA has just stopped allowing it
     results = asfclient.query_orbit_files_by_dt_range(dt1, dt2, [mission], orbit_type=OrbitType.precise)
-    assert len(results) == 12  # 12 files intersect from 20200101T00:00:00 to 20200112T00:00:00
+    assert len(results) == 13  # 12 files intersect from 20200101T00:00:00 to 20200112T00:00:00
     for r in results:
         assert r.stop_time >= dt1
         assert r.start_time <= dt2
@@ -74,7 +74,7 @@ def test_asf_query_orbit_urls_by_dt_range(asfclient: ASFClient):
     # Restituted seems to fail for old dates...
     # Need to look into sentinelsat, or if ESA has just stopped allowing it
     results = asfclient.query_orbits_by_dt_range(dt1, dt2, [mission], orbit_type=OrbitType.precise)
-    assert len(results) == 12  # 12 files intersect from 20200101T00:00:00 to 20200112T00:00:00
+    assert len(results) == 13  # 12 files intersect from 20200101T00:00:00 to 20200112T00:00:00
 
     expected = "https://s1qc.asf.alaska.edu/aux_poeorb/S1A_OPER_AUX_POEORB_OPOD_20210315T155112_V20191230T225942_20200101T005942.EOF"  # noqa
     assert results[0] == expected
