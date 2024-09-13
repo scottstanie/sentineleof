@@ -253,17 +253,17 @@ def query_orbit_file_service(query: str, how_many: int = 0) -> list[dict]:
         query_params["$top"] = str(how_many)
 
     # Make the HTTP GET request on the endpoint URL, no credentials are required
-    print(f"{query_params=}")
+    logger.debug(f"{query_params=}")
     response = requests.get(QUERY_URL, params=query_params)  # type: ignore
 
-    logger.debug(f"response.url: {response.url}")
-    logger.debug(f"response.status_code: {response.status_code}")
+    logger.debug("response.url: %s", response.url)
+    logger.debug("response.status_code: %s", response.status_code)
 
     response.raise_for_status()
 
     # Response should be within the text body as JSON
     json_response = response.json()
-    logger.debug(f"json_response: {json_response}")
+    logger.debug("json_response: %s", json_response)
 
     query_results = json_response["value"]
 
