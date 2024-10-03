@@ -1,5 +1,5 @@
 import pytest
-from eof._fetch_s3_bucket import get_orbit_files
+from eof._asf_s3 import get_orbit_files
 
 
 @pytest.mark.vcr()
