@@ -53,7 +53,7 @@ def list_public_bucket(bucket_name: str, prefix: str = "") -> list[str]:
             "{http://s3.amazonaws.com/doc/2006-03-01/}Contents"
         ):
             key = contents.find("{http://s3.amazonaws.com/doc/2006-03-01/}Key")
-            if key:
+            if key is not None:
                 keys.append(key.text or "")
                 logger.debug(f"Found key: {key}")
 
