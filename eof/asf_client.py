@@ -1,118 +1,108 @@
-"""Client to get orbit files from ASF."""
+"""Client to get orbit files from ASF via the public S3 bucket.
+
+Now uses public S3 endpoints and does not require authentication.
+"""
+
 from __future__ import annotations
 
 import os
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional
-from zipfile import ZipFile
+from typing import Literal
 
 import requests
 
-from ._auth import NASA_HOST, get_netrc_credentials
+from ._asf_s3 import get_orbit_files, ASF_BUCKET_NAME
 from ._select_orbit import T_ORBIT, ValidityError, last_valid_orbit
 from ._types import Filename
 from .log import logger
-from .parsing import EOFLinkFinder
 from .products import SentinelOrbit
-
-SIGNUP_URL = "https://urs.earthdata.nasa.gov/users/new"
-"""Url to prompt user to sign up for NASA Earthdata account."""
 
 
 class ASFClient:
-    auth_url = (
-        "https://urs.earthdata.nasa.gov/oauth/authorize?response_type=code&"
-        "client_id=BO_n7nTIlMljdvU6kRRB3g&redirect_uri=https://auth.asf.alaska.edu/login"
-    )
-
-    precise_url = "https://s1qc.asf.alaska.edu/aux_poeorb/"
-    res_url = "https://s1qc.asf.alaska.edu/aux_resorb/"
-    urls = {"precise": precise_url, "restituted": res_url}
     eof_lists = {"precise": None, "restituted": None}
 
     def __init__(
         self,
-        cache_dir: Optional[Filename] = None,
+        cache_dir: Filename | None = None,
         username: str = "",
         password: str = "",
-        netrc_file: Optional[Filename] = None,
+        netrc_file: Filename | None = None,
     ):
+        """
+        Initialize the ASF client.
+
+        The interface still accepts username, password, etc.,
+        these are now ignored since orbit files are publicly available via S3.
+        """
         self._cache_dir = cache_dir
-        if username and password:
-            self._username = username
-            self._password = password
-        else:
-            logger.debug("Get credentials form netrc")
-            self._username = ""
-            self._password = ""
-            try:
-                self._username, self._password = get_netrc_credentials(NASA_HOST, netrc_file)
-            except FileNotFoundError:
-                logger.warning("No netrc file found.")
-            except ValueError as e:
-                if NASA_HOST not in e.args[0]:
-                    raise e
-                logger.warning(
-                    f"No NASA Earthdata credentials found in netrc file. Please create one using {SIGNUP_URL}"
-                )
 
-        self.session: Optional[requests.Session] = None
-        if self._username and self._password:
-            self.session = self.get_authenticated_session()
+    def get_full_eof_list(
+        self, orbit_type="precise", max_dt=None
+    ) -> list[SentinelOrbit]:
+        """Get the list of orbit files from the public S3 bucket.
 
-    def get_full_eof_list(self, orbit_type="precise", max_dt=None):
-        """Get the list of orbit files from the ASF server."""
-        if orbit_type not in self.urls.keys():
-            raise ValueError("Unknown orbit type: {}".format(orbit_type))
+        If a cached file list exists and is current, that file is used.
+        Otherwise the list is retrieved fresh from S3.
+
+        Args:
+            orbit_type (str): Either "precise" or "restituted"
+            max_dt (datetime, optional): latest datetime requested; if the cached
+                list is older than this, the cache is cleared.
+
+        Returns:
+            list[SentinelOrbit]: list of orbit file objects
+        """
+        if orbit_type not in ("precise", "restituted"):
+            raise ValueError(f"Unknown orbit type: {orbit_type}")
 
         if self.eof_lists.get(orbit_type) is not None:
             return self.eof_lists[orbit_type]
         # Try to see if we have the list of EOFs in the cache
-        elif os.path.exists(self._get_filename_cache_path(orbit_type)):
+        cache_path = self._get_filename_cache_path(orbit_type)
+        if os.path.exists(cache_path):
             eof_list = self._get_cached_filenames(orbit_type)
-            # Need to clear it if it's older than what we're looking for
-            max_saved = max([e.start_time for e in eof_list])
-            if max_saved < max_dt:
-                logger.warning("Clearing cached {} EOF list:".format(orbit_type))
-                logger.warning(
-                    "{} is older than requested {}".format(max_saved, max_dt)
-                )
+            # Clear the cache if the newest saved file is older than requested
+            max_saved = max(e.start_time for e in eof_list)
+            if max_dt is not None and max_saved < max_dt:
+                logger.warning("Clearing cached %s EOF list:", orbit_type)
+                logger.warning("%s is older than requested %s", max_saved, max_dt)
                 self._clear_cache(orbit_type)
             else:
                 logger.info("Using cached EOF list")
                 self.eof_lists[orbit_type] = eof_list
                 return eof_list
 
-        logger.info("Downloading all filenames from ASF (may take awhile)")
-        resp = requests.get(self.urls.get(orbit_type))
-        finder = EOFLinkFinder()
-        finder.feed(resp.text)
-        eof_list = [SentinelOrbit(f) for f in finder.eof_links]
+        logger.info("Downloading orbit file list from public S3 bucket")
+        keys = get_orbit_files(orbit_type)
+        eof_list = [SentinelOrbit(f) for f in keys]
         self.eof_lists[orbit_type] = eof_list
         self._write_cached_filenames(orbit_type, eof_list)
         return eof_list
 
-    def get_download_urls(self, orbit_dts, missions, orbit_type="precise"):
-        """Find the URL for an orbit file covering the specified datetime
+    def get_download_urls(
+        self, orbit_dts: list[datetime], missions: list[str], orbit_type="precise"
+    ) -> list[str]:
+        """Find the download URL for an orbit file covering the specified datetime.
 
         Args:
-            dt (datetime): requested
-        Args:
-            orbit_dts (list[str] or list[datetime]): datetime for orbit coverage
-            missions (list[str]): specify S1A or S1B
+            orbit_dts (list[datetime]): requested dates for orbit coverage.
+            missions (list[str]): specify S1A or S1B (should be same length as orbit_dts).
+            orbit_type (str): either "precise" or "restituted".
 
         Returns:
-            str: URL for the orbit file
+            list[str]: URLs for the orbit files.
+
+        Raises:
+            ValidityError if an orbit is not found.
         """
         eof_list = self.get_full_eof_list(orbit_type=orbit_type, max_dt=max(orbit_dts))
-        # Split up for quicker parsing of the latest one
+        # Split up for quicker parsing by mission
         mission_to_eof_list = {
             "S1A": [eof for eof in eof_list if eof.mission == "S1A"],
             "S1B": [eof for eof in eof_list if eof.mission == "S1B"],
         }
-        # For precise orbits, we can have a larger front margin to ensure we
-        # cover the ascending node crossing
+        # For precise orbits, use a larger front margin to ensure coverage
         if orbit_type == "precise":
             margin0 = timedelta(seconds=T_ORBIT + 60)
         else:
@@ -125,7 +115,9 @@ class ASFClient:
                 filename = last_valid_orbit(
                     dt, dt, mission_to_eof_list[mission], margin0=margin0
                 )
-                urls.append(self.urls[orbit_type] + filename)
+                # Construct the full download URL using the bucket name from _asf_s3
+                url = f"https://{ASF_BUCKET_NAME}.s3.amazonaws.com/{filename}"
+                urls.append(url)
             except ValidityError:
                 remaining_orbits.append((dt, mission))
 
@@ -144,8 +136,10 @@ class ASFClient:
 
         return urls
 
-    def _get_cached_filenames(self, orbit_type="precise"):
-        """Get the cache path for the ASF orbit files."""
+    def _get_cached_filenames(
+        self, orbit_type: Literal["precise", "restituted"]
+    ) -> list[SentinelOrbit] | None:
+        """Read the cache file for the ASF orbit filenames."""
         filepath = self._get_filename_cache_path(orbit_type)
         logger.debug(f"ASF file path cache: {filepath = }")
         if os.path.exists(filepath):
@@ -153,44 +147,46 @@ class ASFClient:
                 return [SentinelOrbit(f) for f in f.read().splitlines()]
         return None
 
-    def _write_cached_filenames(self, orbit_type="precise", eof_list=[]):
-        """Cache the ASF orbit files."""
+    def _write_cached_filenames(self, orbit_type="precise", eof_list=[]) -> None:
+        """Cache the ASF orbit filenames."""
         filepath = self._get_filename_cache_path(orbit_type)
         with open(filepath, "w") as f:
             for e in eof_list:
                 f.write(e.filename + "\n")
 
-    def _clear_cache(self, orbit_type="precise"):
-        """Clear the cache for the ASF orbit files."""
+    def _clear_cache(self, orbit_type="precise") -> None:
+        """Clear the cache for the ASF orbit filenames."""
         filepath = self._get_filename_cache_path(orbit_type)
         os.remove(filepath)
 
-    def _get_filename_cache_path(self, orbit_type="precise"):
-        fname = "{}_filenames.txt".format(orbit_type.lower())
+    def _get_filename_cache_path(self, orbit_type="precise") -> str:
+        fname = f"{orbit_type.lower()}_filenames.txt"
         return os.path.join(self.get_cache_dir(), fname)
 
-    def get_cache_dir(self):
-        """Find location of directory to store .hgt downloads
-        Assuming linux, uses ~/.cache/sentineleof/
+    def get_cache_dir(self) -> Path | str:
+        """Determine the directory to store orbit file caches.
+
+        Returns:
+            str: Directory path
         """
         if self._cache_dir is not None:
             return self._cache_dir
         path = os.getenv("XDG_CACHE_HOME", os.path.expanduser("~/.cache"))
-        path = os.path.join(path, "sentineleof")  # Make subfolder for our downloads
+        path = os.path.join(path, "sentineleof")
         logger.debug("Cache path: %s", path)
         if not os.path.exists(path):
             os.makedirs(path)
         return path
 
-    def _download_and_write(self, url, save_dir=".") -> Path:
-        """Wrapper function to run the link downloading in parallel
+    def _download_and_write(self, url: str, save_dir: str = ".") -> Path:
+        """Download an orbit file from a URL and save it to save_dir.
 
         Args:
-            url (str): url of orbit file to download
-            save_dir (str): directory to save the EOF files into
+            url (str): URL of the orbit file to download.
+            save_dir (str): Directory to save the orbit file.
 
         Returns:
-            Path: Filename to saved orbit file
+            Path: Path to the saved orbit file.
         """
         fname = Path(save_dir) / url.split("/")[-1]
         if os.path.isfile(fname):
@@ -198,60 +194,14 @@ class ASFClient:
             return fname
 
         logger.info("Downloading %s", url)
-        get_function = self.session.get if self.session is not None else requests.get
         try:
-            response = get_function(url)
+            response = requests.get(url)
             response.raise_for_status()
         except requests.exceptions.HTTPError as e:
-            logger.warning(e)
-
-            login_url = self.auth_url + f"&state={url}"
-            logger.warning(
-                "Failed to download %s. Trying URS login url: %s", url, login_url
-            )
-            # Add credentials
-            response = get_function(login_url, auth=(self._username, self._password))
-            response.raise_for_status()
+            logger.error("Failed to download %s: %s", url, e)
+            raise
 
         logger.info("Saving to %s", fname)
         with open(fname, "wb") as f:
             f.write(response.content)
-        if fname.suffix == ".zip":
-            ASFClient._extract_zip(fname, save_dir=save_dir)
-            # Pass the unzipped file ending in ".EOF", not the ".zip"
-            fname = fname.with_suffix("")
         return fname
-
-    @staticmethod
-    def _extract_zip(fname_zipped: Path, save_dir=None, delete=True):
-        if save_dir is None:
-            save_dir = fname_zipped.parent
-        with ZipFile(fname_zipped, "r") as zip_ref:
-            # Extract the .EOF to the same direction as the .zip
-            zip_ref.extractall(path=save_dir)
-
-            # check that there's not a nested zip structure
-            zipped = zip_ref.namelist()[0]
-            zipped_dir = os.path.dirname(zipped)
-            if zipped_dir:
-                no_subdir = save_dir / os.path.split(zipped)[1]
-                os.rename((save_dir / zipped), no_subdir)
-                os.rmdir((save_dir / zipped_dir))
-        if delete:
-            os.remove(fname_zipped)
-
-    def get_authenticated_session(self) -> requests.Session:
-        """Get an authenticated `requests.Session` using earthdata credentials.
-
-        Fuller example here:
-        https://github.com/ASFHyP3/hyp3-sdk/blob/ec72fcdf944d676d5c8c94850d378d3557115ac0/src/hyp3_sdk/util.py#L67C8-L67C8
-
-        Returns
-        -------
-        requests.Session
-            Authenticated session
-        """
-        s = requests.Session()
-        response = s.get(self.auth_url, auth=(self._username, self._password))
-        response.raise_for_status()
-        return s
