@@ -33,5 +33,5 @@ def test_asf_client_download(tmp_path):
     dt = datetime.datetime(2020, 1, 1)
     mission = "S1A"
     urls = asfclient.get_download_urls([dt], [mission], orbit_type="precise")
-    expected = "https://s1qc.asf.alaska.edu/aux_poeorb/S1A_OPER_AUX_POEORB_OPOD_20210315T155112_V20191230T225942_20200101T005942.EOF"  # noqa
+    expected = "https://s1-orbits.s3.amazonaws.com/AUX_POEORB/S1A_OPER_AUX_POEORB_OPOD_20210315T155112_V20191230T225942_20200101T005942.EOF"
     assert urls == [expected]
