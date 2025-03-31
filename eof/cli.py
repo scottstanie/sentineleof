@@ -11,7 +11,7 @@ import click
 from ._types import Filename
 
 from eof import download, log
-from eof._auth import NASA_HOST, DATASPACE_HOST, setup_netrc
+from eof._auth import DATASPACE_HOST, setup_netrc
 
 
 @click.command()

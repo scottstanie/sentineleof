@@ -22,6 +22,7 @@
 # https://github.com/scottstanie/apertools/blob/77e6330499adc01c3860f49ee6b3875c49532b76/apertools/parsers.py
 
 """Utilities for parsing file names of SAR products for relevant info."""
+
 from __future__ import annotations
 
 import re
@@ -47,7 +48,7 @@ class Base(object):
         return "{} product: {}".format(self.__class__.__name__, self.filename)
 
     def __repr__(self):
-        return str(self)
+        return "{}({!r})".format(self.__class__.__name__, self.filename)
 
     def __lt__(self, other):
         return self.filename < other.filename
@@ -137,8 +138,7 @@ class Sentinel(Base):
     TIME_FMT = "%Y%m%dT%H%M%S"
 
     def __init__(self, filename, **kwargs):
-        super(Sentinel, self).__init__(filename, **kwargs)
-        # The name of the unzipped .SAFE directory (with .zip stripped)
+        super().__init__(filename, **kwargs)
 
     def __str__(self):
         return "{} {}, path {} from {}".format(
@@ -313,7 +313,7 @@ class SentinelOrbit(Base):
     )
 
     def __init__(self, filename, **kwargs):
-        super(SentinelOrbit, self).__init__(filename, **kwargs)
+        super().__init__(filename, **kwargs)
 
     def __str__(self):
         return "{} {} from {} to {}".format(

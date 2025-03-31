@@ -47,7 +47,9 @@ class DataspaceClient:
                 if not (username and password):
                     logger.debug(f"Get credentials form netrc ({netrc_file!r})")
                     # Shall we keep username if explicitly set?
-                    username, password = get_netrc_credentials(DATASPACE_HOST, netrc_file)
+                    username, password = get_netrc_credentials(
+                        DATASPACE_HOST, netrc_file
+                    )
                 else:
                     logger.debug("Using provided username and password")
                 self._access_token = get_access_token(username, password, token_2fa)
@@ -295,7 +297,9 @@ def query_orbit_file_service(query: str) -> list[dict]:
     return query_results
 
 
-def get_access_token(username: Optional[str], password: Optional[str], token_2fa: Optional[str]) -> str:
+def get_access_token(
+    username: Optional[str], password: Optional[str], token_2fa: Optional[str]
+) -> str:
     """Get an access token for the Copernicus Data Space Ecosystem (CDSE) API.
 
     Code from https://documentation.dataspace.copernicus.eu/APIs/Token.html
