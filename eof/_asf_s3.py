@@ -100,18 +100,11 @@ def get_orbit_files(orbit_type: Literal["precise", "restituted"]) -> list[str]:
     ValueError
         If an invalid orbit_type is provided.
     """
-    prefix = (
-        "AUX_POEORB"
-        if orbit_type == "precise"
-        else "AUX_RESORB"
-        if orbit_type == "restituted"
-        else None
-    )
-    if prefix is None:
+    if orbit_type not in ("precise", "restituted"):
         raise ValueError("orbit_type must be either 'precise' or 'restituted'")
+    prefix = "AUX_POEORB" if orbit_type == "precise" else "AUX_RESORB"
 
-    all_keys = list_public_bucket(ASF_BUCKET_NAME)
-    orbit_files = [key for key in all_keys if key.startswith(prefix)]
+    orbit_files = list_public_bucket(ASF_BUCKET_NAME, prefix=prefix)
 
     logger.info(f"Found {len(orbit_files)} {orbit_type} orbit files")
     return orbit_files

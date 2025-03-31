@@ -1,37 +1,11 @@
 """Module for parsing the orbit state vectors (OSVs) from the .EOF file"""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from html.parser import HTMLParser
 from xml.etree import ElementTree
 
 from .log import logger
-
-
-class EOFLinkFinder(HTMLParser):
-    """Finds EOF download links in aux.sentinel1.eo.esa.int page
-
-    Example page to search:
-    http://step.esa.int/auxdata/orbits/Sentinel-1/POEORB/S1B/2020/10/
-
-    Usage:
-    >>> import requests
-    >>> resp = requests.get("http://step.esa.int/auxdata/orbits/Sentinel-1/POEORB/S1B/2020/10/")
-    >>> parser = EOFLinkFinder()
-    >>> parser.feed(resp.text)
-    """
-
-    def __init__(self):
-        super().__init__()
-        self.eof_links = set()
-
-    def handle_starttag(self, tag, attrs):
-        if tag == "a":
-            for name, value in attrs:
-                if name == "href" and (
-                    value.endswith(".EOF.zip") or value.endswith(".EOF")
-                ):
-                    self.eof_links.add(value)
 
 
 def parse_utc_string(timestring):
