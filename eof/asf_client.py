@@ -110,6 +110,7 @@ class ASFClient:
         mission_to_eof_list = {
             "S1A": [eof for eof in eof_list if eof.mission == "S1A"],
             "S1B": [eof for eof in eof_list if eof.mission == "S1B"],
+            "S1C": [eof for eof in eof_list if eof.mission == "S1C"],
         }
         # For precise orbits, we can have a larger front margin to ensure we
         # cover the ascending node crossing

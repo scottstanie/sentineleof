@@ -13,10 +13,12 @@ class EOFLinkFinder(HTMLParser):
 
     Example page to search:
     http://step.esa.int/auxdata/orbits/Sentinel-1/POEORB/S1B/2020/10/
+    S1C follows the same pattern:
 
     Usage:
     >>> import requests
     >>> resp = requests.get("http://step.esa.int/auxdata/orbits/Sentinel-1/POEORB/S1B/2020/10/")
+    # Similarly for S1C
     >>> parser = EOFLinkFinder()
     >>> parser.feed(resp.text)
     """

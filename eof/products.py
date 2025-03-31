@@ -99,7 +99,7 @@ class Sentinel(Base):
     File name format:
         MMM_BB_TTTR_LFPP_YYYYMMDDTHHMMSS_YYYYMMDDTHHMMSS_OOOOOO_DDDDDD_CCCC.EEEE
 
-    MMM: mission/satellite S1A or S1B
+    MMM: mission/satellite S1A, S1B or S1C
     BB: Mode/beam identifier. The S1-S6 beams apply to SM products IW,
       EW and WV identifiers appply to products from the respective modes.
     TTT: Product Type: RAW, SLC, GRD, OCN
@@ -122,7 +122,7 @@ class Sentinel(Base):
     """
 
     FILE_REGEX = re.compile(
-        r"(?P<mission>S1A|S1B)_"
+        r"(?P<mission>S1A|S1B|S1C)_"
         r"(?P<beam>[\w\d]{2})_"
         r"(?P<product_type>[\w_]{3})"
         r"(?P<resolution_class>[FHM_])_"
@@ -209,7 +209,7 @@ class Sentinel(Base):
 
     @property
     def mission(self):
-        """Returns satellite/mission of product (S1A/S1B)
+        """Returns satellite/mission of product (S1A/S1B/S1C)
 
         Example:
             >>> s = Sentinel('S1A_IW_SLC__1SDV_20180408T043025_20180408T043053_021371_024C9B_1B70')
@@ -248,6 +248,8 @@ class Sentinel(Base):
             return ((self.absolute_orbit - 73) % 175) + 1
         elif self.mission == "S1B":
             return ((self.absolute_orbit - 27) % 175) + 1
+        elif self.mission == "S1C":
+            return ((self.absolute_orbit - 172) % 175) + 1
 
     @property
     def path(self):
@@ -280,7 +282,7 @@ class SentinelOrbit(Base):
     The filename must comply with the following pattern:
         MMM_CCCC_TTTTTTTTTT_<instance_id>.EOF
 
-    MMM = mission, S1A or S1B
+    MMM = mission, S1A, S1B or S1C
     CCCC =  File Class, we only want OPER = routine operational
     TTTTTTTTTT = File type
      = FFFF DDDDDD
@@ -303,7 +305,7 @@ class SentinelOrbit(Base):
 
     TIME_FMT = "%Y%m%dT%H%M%S"
     FILE_REGEX = (
-        r"(?P<mission>S1A|S1B)_OPER_AUX_"
+        r"(?P<mission>S1A|S1B|S1C)_OPER_AUX_"
         r"(?P<orbit_type>[\w_]{6})_OPOD_"
         r"(?P<created_datetime>[T\d]{15})_"
         r"V(?P<start_datetime>[T\d]{15})_"
@@ -340,7 +342,7 @@ class SentinelOrbit(Base):
 
     @property
     def mission(self):
-        """Returns satellite/mission of product (S1A/S1B)
+        """Returns satellite/mission of product (S1A/S1B/S1C)
 
         Example:
             >>> s = SentinelOrbit('S1A_OPER_AUX_POEORB_OPOD_20200121T120654_V20191231T225942_20200102T005942.EOF')
