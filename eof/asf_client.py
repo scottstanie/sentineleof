@@ -29,8 +29,7 @@ class ASFClient:
         password: str = "",
         netrc_file: Filename | None = None,
     ):
-        """
-        Initialize the ASF client.
+        """Initialize the ASF client.
 
         The interface still accepts username, password, etc.,
         these are now ignored since orbit files are publicly available via S3.
