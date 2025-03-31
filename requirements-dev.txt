@@ -3,6 +3,3 @@ pytest-recording
 cython
 twine
 coveralls
-sphinx
-m2r
-sphinx_rtd_theme
