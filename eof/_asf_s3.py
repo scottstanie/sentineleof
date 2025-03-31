@@ -1,12 +1,10 @@
-import logging
 from functools import cache
 from typing import Optional, Literal
 
 import requests
 import xml.etree.ElementTree as ET
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from .log import logger
 
 ASF_BUCKET_NAME = "s1-orbits"
 
