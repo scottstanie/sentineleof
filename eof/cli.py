@@ -44,10 +44,10 @@ from eof._auth import NASA_HOST, DATASPACE_HOST, setup_netrc
 @click.option(
     "--mission",
     "-m",
-    type=click.Choice(["S1A", "S1B"]),
+    type=click.Choice(["S1A", "S1B", "S1C"]),
     help=(
         "If using `--date`, optionally specify Sentinel satellite to download"
-        " (default: gets both S1A and S1B)"
+        " (default: gets S1A, S1B, and S1C)"
     ),
 )
 @click.option(

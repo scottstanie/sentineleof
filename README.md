@@ -95,9 +95,9 @@ Options:
                                   Sentinel-1 file/folder
   -d, --date TEXT                 Alternative to specifying Sentinel products:
                                   choose date to download for.
-  -m, --mission [S1A|S1B]         If using `--date`, optionally specify
+  -m, --mission [S1A|S1B|S1C]     If using `--date`, optionally specify
                                   Sentinel satellite to download (default:
-                                  gets both S1A and S1B)
+                                  gets S1A, S1B, and S1C)
   --orbit-type [precise|restituted]
                                   Optionally specify the type of orbit file to
                                   get (default: precise (POEORB), but fallback
@@ -135,5 +135,5 @@ To use the function from python, you can pass a list of dates:
 from eof.download import download_eofs
 
 download_eofs([datetime.datetime(2018, 5, 3, 0, 0, 0)])
-download_eofs(['20180503', '20180507'], ['S1A', 'S1B'])
+download_eofs(['20180503', '20180507'], ['S1A', 'S1B', 'S1C'])
 ```

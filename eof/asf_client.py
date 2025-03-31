@@ -101,6 +101,7 @@ class ASFClient:
         mission_to_eof_list = {
             "S1A": [eof for eof in eof_list if eof.mission == "S1A"],
             "S1B": [eof for eof in eof_list if eof.mission == "S1B"],
+            "S1C": [eof for eof in eof_list if eof.mission == "S1C"],
         }
         # For precise orbits, use a larger front margin to ensure coverage
         if orbit_type == "precise":
