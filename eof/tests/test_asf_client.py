@@ -3,8 +3,7 @@ import datetime
 import pytest
 
 from eof.asf_client import ASFClient
-
-# pytest --record-mode=all
+from eof._asf_s3 import ASF_BUCKET_NAME, list_public_bucket
 
 
 @pytest.mark.vcr
