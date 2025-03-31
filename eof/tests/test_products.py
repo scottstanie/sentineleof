@@ -50,3 +50,15 @@ def test_pathlib():
         Path("S1A_IW_SLC__1SDV_20230823T154908_20230823T154935_050004_060418_521B.zip")
     )
     assert p1 == p2
+
+
+def test_s1c():
+    fname = "S1C_IW_SLC__1SDV_20250331T060116_20250331T060143_001681_002CD0_8D44"
+    p = Sentinel(fname)
+
+    assert p.filename == fname
+    assert p.start_time == datetime(2025, 3, 31, 6, 1, 16)
+    assert p.stop_time == datetime(2025, 3, 31, 6, 1, 43)
+    assert p.relative_orbit == 110
+    assert p.polarization == "DV"
+    assert p.mission == "S1C"
