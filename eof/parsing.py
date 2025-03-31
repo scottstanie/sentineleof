@@ -1,4 +1,5 @@
 """Module for parsing the orbit state vectors (OSVs) from the .EOF file"""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -18,9 +19,6 @@ class EOFLinkFinder(HTMLParser):
     Usage:
     >>> import requests
     >>> resp = requests.get("http://step.esa.int/auxdata/orbits/Sentinel-1/POEORB/S1B/2020/10/")
-    # Similarly for S1C
-    >>> parser = EOFLinkFinder()
-    >>> parser.feed(resp.text)
     """
 
     def __init__(self):
