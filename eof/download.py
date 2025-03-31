@@ -63,7 +63,7 @@ def download_eofs(
 
     Args:
         orbit_dts (list[str] or list[datetime.datetime]): datetime for orbit coverage
-        missions (list[str]): optional, to specify S1A or S1B
+        missions (list[str]): optional, to specify S1A, S1B or S1C
             No input downloads both, must be same len as orbit_dts
         sentinel_file (str): path to Sentinel-1 filename to download one .EOF for
         save_dir (str): directory to save the EOF files into
@@ -73,12 +73,12 @@ def download_eofs(
         list[str]: all filenames of saved orbit files
 
     Raises:
-        ValueError - for missions argument not being one of 'S1A', 'S1B',
+        ValueError - for missions argument not being one of 'S1A', 'S1B', 'S1C',
             having different lengths, or `sentinel_file` being invalid
     """
     # TODO: condense list of same dates, different hours?
-    if missions and all(m not in ("S1A", "S1B") for m in missions):
-        raise ValueError('missions argument must be "S1A" or "S1B"')
+    if missions and all(m not in ("S1A", "S1B", "S1C") for m in missions):
+        raise ValueError('missions argument must be "S1A", "S1B" or "S1C"')
     if sentinel_file:
         sent = Sentinel(sentinel_file)
         orbit_dts, missions = [sent.start_time], [sent.mission]
@@ -240,7 +240,7 @@ def main(
         # Handle parsing in download_eof
         orbit_dts, missions = None, None
     elif date:
-        missions = [mission] if mission else ["S1A", "S1B"]
+        missions = [mission] if mission else ["S1A", "S1B", "S1C"]
         orbit_dts = [parse(date)] * len(missions)
         # Check they didn't pass a whole datetime
         if all((dt.hour == 0 and dt.minute == 0) for dt in orbit_dts):

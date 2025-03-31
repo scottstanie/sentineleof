@@ -75,7 +75,7 @@ class DataspaceClient:
         satellite_id: str,
         product_type: str = "AUX_POEORB",
     ) -> list[dict]:
-        assert satellite_id in {"S1A", "S1B"}
+        assert satellite_id in {"S1A", "S1B", "S1C"}
         assert product_type in {"AUX_POEORB", "AUX_RESORB"}
         # return run_query(t0, t1, satellite_id, product_type)
         # Construct the query based on the time range parsed from the input file
@@ -119,7 +119,7 @@ class DataspaceClient:
         ----------
         orbit_dts : list[datetime.datetime]
             List of datetimes to query for
-        missions : list[str], choices = {"S1A", "S1B"}
+        missions : list[str], choices = {"S1A", "S1B", "S1C"}
             List of missions to query for. Must be same length as orbit_dts
         orbit_type : str, choices = {"precise", "restituted"}
             String identifying the type of orbit file to query for.
@@ -210,7 +210,7 @@ def _construct_orbit_file_query(
     ----------
     mission_id : str
         The mission ID parsed from the SAFE file name, should always be one
-        of S1A or S1B.
+        of S1A, S1B or S1C.
     orbit_type : str
         String identifying the type of orbit file to query for. Should be either
         POEORB for Precise Orbit files, or RESORB for Restituted.
