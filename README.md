@@ -15,31 +15,29 @@
 
 Tool to download Sentinel 1 precise/restituted orbit files (.EOF files) for processing SLCs
 
-## (Update 2023-10-31) Changes to Sentinel-1 orbit files source
+## Changes to Sentinel-1 orbit files source
 
-The [Copernicus Scihub client has discontinued service](https://scihub.copernicus.eu/) in favor of [the new Copernicus Data Space Ecosystem](https://dataspace.copernicus.eu/). The new service no longer allows anonymous public downloads (using the `gnssuser`), which means you must register for either a Dataspace account (to use the CDSE data) or a NASA Earthdata account (to use the orbits provided by ASF).
+The source for orbit files provided by ASF has switched to their [public S3 bucket](https://registry.opendata.aws/s1-orbits/).
+Since the S3 bucket is public, no Earthdata credentials are required.
 
-*Changes required by you to continue using this tool:*
+To use this directly bypass the default of using the Copernicus Data Space Ecosystem (CDSE), you can pass the `--force-asf` flag[^1] to the command line tool.
 
-Option 1: Register for CDSE
+## Changes to Copernicus Data Space Ecosystem (since October, 2023)
+
+The [Copernicus Scihub client has discontinued service](https://scihub.copernicus.eu/) in favor of [the new Copernicus Data Space Ecosystem](https://dataspace.copernicus.eu/). The new service no longer allows anonymous public downloads (using the `gnssuser`), which means you must register for either a Dataspace account (to use the CDSE data).
+
+*Changes required by you to continue using CDSE-provided orbits with this tool:*
+
+Register for CDSE
 
 1. Register for an account with Copernicus Data Space account at https://dataspace.copernicus.eu/ (using the Loging button, which will have the option for a "Register" page)
-2. After creating the username and confirming your email, store your username/password in a `~/.netrc` file with the hostname `dataspace.copernicus.eu`:
+2. After creating the username and confirming your email, store your username/password in a `~/.netrc` file (or, on Windows, `~_netrc`) with the hostname `dataspace.copernicus.eu`:
 ```
 machine dataspace.copernicus.eu
   login MYUSERNAME
   password MYPASSWORD
 ```
 
-Option 2: Register for NASA Earthdata
-
-1. Register for an account with NASA Earthdata at https://urs.earthdata.nasa.gov/users/new
-2. After creating the username and confirming your email, store your username/password in a `~/.netrc` file with the hostname `urs.earthdata.nasa.gov`:
-```
-machine urs.earthdata.nasa.gov
-  login MYUSERNAME
-  password MYPASSWORD
-```
 
 ## Setup and installation
 
@@ -54,6 +52,8 @@ conda install -c conda-forge sentineleof
 ```
 
 This will put the executable `eof` on your path
+
+## Usage
 
 After setting up your `~/.netrc` (see above), if you have a bunch of Sentinel 1 zip files (or unzipped SAFE folders), you can simply run
 
@@ -116,10 +116,6 @@ Options:
   --cdse-2fa-token TEXT           Copernicus Data Space Ecosystem Two-Factor
                                   Token. Optional, unless 2FA Authentification
                                   has been enabled in user profile.
-  --asf-user TEXT                 ASF username. If not provided the program
-                                  asks for it
-  --asf-password TEXT             ASF password. If not provided the program
-                                  asks for it
   --ask-password                  ask for passwords interactively if needed
   --update-netrc                  save credentials provided interactively in
                                   the ~/.netrc file if necessary
@@ -137,3 +133,5 @@ from eof.download import download_eofs
 download_eofs([datetime.datetime(2018, 5, 3, 0, 0, 0)])
 download_eofs(['20180503', '20180507'], ['S1A', 'S1B', 'S1C'])
 ```
+
+[^1]: This will be the default in a future version of this package. It is currently still an optional a flag to keep backward compatibility.
