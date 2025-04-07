@@ -1,4 +1,5 @@
 """Module for filtering/selecting from orbit query"""
+
 from __future__ import annotations
 
 import operator
@@ -24,7 +25,7 @@ def last_valid_orbit(
     t1: datetime,
     data: Sequence[SentinelOrbit],
     margin0=timedelta(seconds=T_ORBIT + 60),
-    margin1=timedelta(minutes=5),
+    margin1=timedelta(seconds=60),
 ) -> str:
     # Using a start margin of > 1 orbit so that the start of the orbit file will
     # cover the ascending node crossing of the acquisition

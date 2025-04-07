@@ -6,14 +6,14 @@ Now uses public S3 endpoints and does not require authentication.
 from __future__ import annotations
 
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import Literal
 
 import requests
 
 from ._asf_s3 import get_orbit_files, ASF_BUCKET_NAME
-from ._select_orbit import T_ORBIT, ValidityError, last_valid_orbit
+from ._select_orbit import ValidityError, last_valid_orbit
 from ._types import Filename
 from .log import logger
 from .products import SentinelOrbit
@@ -102,19 +102,12 @@ class ASFClient:
             "S1B": [eof for eof in eof_list if eof.mission == "S1B"],
             "S1C": [eof for eof in eof_list if eof.mission == "S1C"],
         }
-        # For precise orbits, use a larger front margin to ensure coverage
-        if orbit_type == "precise":
-            margin0 = timedelta(seconds=T_ORBIT + 60)
-        else:
-            margin0 = timedelta(seconds=60)
 
         remaining_orbits = []
         urls = []
         for dt, mission in zip(orbit_dts, missions):
             try:
-                filename = last_valid_orbit(
-                    dt, dt, mission_to_eof_list[mission], margin0=margin0
-                )
+                filename = last_valid_orbit(dt, dt, mission_to_eof_list[mission])
                 # Construct the full download URL using the bucket name from _asf_s3
                 url = f"https://{ASF_BUCKET_NAME}.s3.amazonaws.com/{filename}"
                 urls.append(url)
