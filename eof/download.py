@@ -27,9 +27,11 @@ from __future__ import annotations
 import glob
 import itertools
 import os
+from collections.abc import Sequence
+from datetime import datetime
 from multiprocessing.pool import ThreadPool
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 
 from dateutil.parser import parse
 from requests.exceptions import HTTPError
@@ -44,11 +46,11 @@ MAX_WORKERS = 6  # workers to download in parallel (for ASF backup)
 
 
 def download_eofs(
-    orbit_dts=None,
-    missions=None,
-    sentinel_file=None,
-    save_dir=".",
-    orbit_type="precise",
+    orbit_dts: Sequence[datetime | str] | None = None,
+    missions: Sequence[str] | None = None,
+    sentinel_file: str | None = None,
+    save_dir: str = ".",
+    orbit_type: Literal["precise", "restituted"] = "precise",
     force_asf: bool = False,
     asf_user: str = "",
     asf_password: str = "",
@@ -59,22 +61,57 @@ def download_eofs(
     netrc_file: Optional[Filename] = None,
     max_workers: int = MAX_WORKERS,
 ) -> list[Path]:
-    """Downloads and saves EOF files for specific dates
+    """Downloads and saves Sentinel precise or restituted orbit files (EOF).
 
-    Args:
-        orbit_dts (list[str] or list[datetime.datetime]): datetime for orbit coverage
-        missions (list[str]): optional, to specify S1A, S1B or S1C
-            No input downloads both, must be same len as orbit_dts
-        sentinel_file (str): path to Sentinel-1 filename to download one .EOF for
-        save_dir (str): directory to save the EOF files into
-        orbit_type (str): precise or restituted
+    By default, it tries to download from Copernicus Data Space Ecosystem first,
+    then falls back to ASF if the first source fails (unless `force_asf` is True).
 
-    Returns:
-        list[str]: all filenames of saved orbit files
+    Parameters
+    ----------
+    orbit_dts : list[datetime] or list[str] or None
+        List of datetimes for orbit coverage.
+        If strings are provided, they will be parsed into datetime objects.
+    missions : list[str] or None
+        List of mission identifiers ('S1A', 'S1B', or 'S1C'). If None,
+        orbits for all missions will be attempted. Must be same length as orbit_dts.
+    sentinel_file : str or None
+        Path to a Sentinel-1 file to download a matching EOF for.
+        If provided, orbit_dts and missions are ignored.
+    save_dir : str, default="."
+        Directory to save the downloaded EOF files into.
+    orbit_type : {'precise', 'restituted'}, default='precise'
+        Type of orbit file to download (precise=POEORB or restituted=RESORB).
+    force_asf : bool, default=False
+        If True, skip trying Copernicus Data Space and download directly from ASF.
+    asf_user : str, default=""
+        ASF username (deprecated, ASF orbits are now publicly available).
+    asf_password : str, default=""
+        ASF password (deprecated, ASF orbits are now publicly available).
+    cdse_access_token : str or None, default=None
+        Copernicus Data Space Ecosystem access token.
+    cdse_user : str, default=""
+        Copernicus Data Space Ecosystem username.
+    cdse_password : str, default=""
+        Copernicus Data Space Ecosystem password.
+    cdse_2fa_token : str, default=""
+        Copernicus Data Space Ecosystem two-factor authentication token.
+    netrc_file : str or None, default=None
+        Path to .netrc file for authentication credentials.
+    max_workers : int, default=MAX_WORKERS
+        Number of parallel downloads to run.
 
-    Raises:
-        ValueError - for missions argument not being one of 'S1A', 'S1B', 'S1C',
-            having different lengths, or `sentinel_file` being invalid
+    Returns
+    -------
+    list[Path]
+        Paths to all successfully downloaded orbit files.
+
+    Raises
+    ------
+    ValueError
+        If missions argument contains values other than 'S1A', 'S1B', 'S1C',
+        if missions and orbit_dts have different lengths, or if sentinel_file is invalid.
+    HTTPError
+        If there's an HTTP error during download that's not a rate limit error.
     """
     # TODO: condense list of same dates, different hours?
     if missions and all(m not in ("S1A", "S1B", "S1C") for m in missions):
@@ -82,6 +119,7 @@ def download_eofs(
     if sentinel_file:
         sent = Sentinel(sentinel_file)
         orbit_dts, missions = [sent.start_time], [sent.mission]
+    assert orbit_dts is not None and missions is not None
     if missions and len(missions) != len(orbit_dts):
         raise ValueError("missions arg must be same length as orbit_dts")
     if not missions:
@@ -114,7 +152,7 @@ def download_eofs(
                 )
 
             if query:
-                logger.info("Attempting download from SciHub")
+                logger.info("Attempting download from Copernicus Data Space Ecosystem")
                 try:
                     results = client.download_all(
                         query, output_directory=save_dir, max_workers=max_workers

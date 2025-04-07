@@ -1,4 +1,5 @@
 """Client to get orbit files from dataspace.copernicus.eu ."""
+
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
@@ -91,7 +92,7 @@ class DataspaceClient:
 
     @staticmethod
     def query_orbit_for_product(
-        product,
+        product: str | S1Product,
         orbit_type: str = "precise",
         t0_margin: timedelta = T0,
         t1_margin: timedelta = T1,
