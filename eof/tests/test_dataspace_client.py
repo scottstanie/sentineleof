@@ -39,3 +39,16 @@ def test_query_resorb_edge_case():
         r["title"]
         == "S1A_OPER_AUX_RESORB_OPOD_20230823T174849_V20230823T141024_20230823T172754"
     )
+
+
+@pytest.mark.vcr
+def test_query_resorb_s1_reader_issue68():
+    f = "S1A_IW_SLC__1SDV_20250310T204228_20250310T204253_058247_0732D8_1AA3"
+
+    client = DataspaceClient()
+    query = client.query_orbit_for_product(f, orbit_type="restituted")
+    assert len(query) == 1
+    expected = (
+        "S1A_OPER_AUX_RESORB_OPOD_20250310T220905_V20250310T180852_20250310T212622.EOF"
+    )
+    assert query[0]["Name"] == expected

@@ -3,6 +3,7 @@ import datetime
 import pytest
 
 from eof.asf_client import ASFClient
+from eof.products import Sentinel
 from eof._asf_s3 import ASF_BUCKET_NAME, list_public_bucket
 
 
@@ -52,3 +53,19 @@ def test_list_public_bucket_poeorb():
         precise[0]
         == "AUX_POEORB/S1A_OPER_AUX_POEORB_OPOD_20210203T122423_V20210113T225942_20210115T005942.EOF"
     )
+
+
+@pytest.mark.vcr
+def test_query_resorb_s1_reader_issue68():
+    f = "S1A_IW_SLC__1SDV_20250310T204228_20250310T204253_058247_0732D8_1AA3"
+    sent = Sentinel(f)
+    orbit_dts, missions = [sent.start_time], [sent.mission]
+
+    client = ASFClient()
+
+    urls = client.get_download_urls(orbit_dts, missions, orbit_type="restituted")
+    assert len(urls) == 1
+    expected = (
+        "S1A_OPER_AUX_RESORB_OPOD_20250310T220905_V20250310T180852_20250310T212622.EOF"
+    )
+    assert urls[0].split("/")[-1] == expected
