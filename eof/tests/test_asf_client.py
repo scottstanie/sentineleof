@@ -51,7 +51,7 @@ def test_asf_full_url_list(tmp_path, asfclient: ASFClient):
 
     # Actually, it's possible as a same orbit may be published several times at
     # different dates...
-    assert baseline_urls <= remote_urls, f"We expect ASF won't remove old EOF products..."
+    assert baseline_urls <= remote_urls, "We expect ASF won't remove old EOF products..."
 
 
 def test_asf_query_orbit_files_by_dt_range(asfclient: ASFClient):

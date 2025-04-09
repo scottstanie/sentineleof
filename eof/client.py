@@ -32,7 +32,7 @@ class AbstractSession:
             eofs,
             output_directory: Filename,
             max_workers: int = 3,
-    ) -> list[Path]|list[Filename]:
+    ) -> list[Path]:
         """Download all the specified orbit products."""
 
 
@@ -41,8 +41,8 @@ class Client:
     Common interface for all clients.
     """
 
-    T0 = timedelta(seconds=T_ORBIT + 60)
-    T1 = timedelta(seconds=60)
+    T0 : timedelta = timedelta(seconds=T_ORBIT + 60)
+    T1 : timedelta = timedelta(seconds=60)
 
     @abstractmethod
     def query_orbit_by_dt(
@@ -52,7 +52,7 @@ class Client:
             orbit_type: OrbitType,
             t0_margin: timedelta = T0,
             t1_margin: timedelta = T1,
-    ) -> list[dict]|list[str]:
+    ) -> list[dict[str,str]]|list[str]:
         """
         Request orbit information according to a list of datetimes.
 
@@ -74,7 +74,7 @@ class Client:
             last_dt: datetime,
             missions: Sequence[str] = (),
             orbit_type: OrbitType = OrbitType.precise,
-    ) -> list[dict]|list[str]:
+    ) -> list[dict[str,str]]|list[str]:
         """
         Request orbit information according to a range of datetimes.
 
@@ -95,7 +95,7 @@ class Client:
             orbit_type: OrbitType = OrbitType.precise,
             t0_margin: timedelta = T0,
             t1_margin: timedelta = T1,
-    ) -> list[dict]|list[str]:
+    ) -> list[dict[str,str]]|list[str]:
         """
         Request orbit information according to a Sentinel-1 filename
 

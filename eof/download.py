@@ -25,11 +25,12 @@ See parsers for Sentinel file naming description
 from __future__ import annotations
 from datetime import datetime
 
+from collections.abc import Sequence
 import glob
 import itertools
 import os
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import cast
 
 from dateutil.parser import parse
 from requests.exceptions import HTTPError
@@ -45,19 +46,17 @@ MAX_WORKERS = 6  # workers to download in parallel (for ASF backup)
 
 
 def download_eofs(
-    orbit_dts: Optional[Union[List[datetime], List[str]]] = None,
-    missions=(),
-    sentinel_file=None,
-    save_dir=".",
-    orbit_type=OrbitType.precise,
+    orbit_dts: list[datetime]|list[str]|None = None,
+    missions : Sequence[str]=(),
+    sentinel_file: str|None = None,
+    save_dir: str=".",
+    orbit_type: OrbitType=OrbitType.precise,
     force_asf: bool = False,
-    asf_user: str = "",
-    asf_password: str = "",
-    cdse_access_token: Optional[str] = None,
+    cdse_access_token: str|None = None,
     cdse_user: str = "",
     cdse_password: str = "",
     cdse_2fa_token: str = "",
-    netrc_file: Optional[Filename] = None,
+    netrc_file: Filename|None = None,
     max_workers: int = MAX_WORKERS,
 ) -> list[Path]:
     """Downloads and saves EOF files for specific dates
@@ -95,7 +94,7 @@ def download_eofs(
     orbit_dts = [parse(dt) if isinstance(dt, str) else dt for dt in orbit_dts]
     session : AbstractSession
 
-    filenames = []
+    filenames : list[Path] = []
     dataspace_successful = False
 
     # First, check that Scihub isn't having issues
@@ -123,7 +122,7 @@ def download_eofs(
                 logger.info("Attempting download from Copernicus Dataspace")
                 try:
                     results = session.download_all(
-                        query,  # type: ignore
+                        cast(list[dict[str,str]], query),
                         output_directory=save_dir,
                         max_workers=max_workers
                     )
@@ -143,7 +142,7 @@ def download_eofs(
             logger.warning("Dataspace failed, trying ASF")
 
         asf_client = ASFClient()
-        session = asf_client.authenticate(username=asf_user, password=asf_password, netrc_file=netrc_file)
+        session = asf_client.authenticate()
         if session:
             urls = asf_client.get_download_urls(orbit_dts, missions, orbit_type=orbit_type)
             results = session.download_all(
@@ -155,7 +154,7 @@ def download_eofs(
     return filenames
 
 
-def find_current_eofs(cur_path):
+def find_current_eofs(cur_path: str):
     """Returns a list of SentinelOrbit objects located in `cur_path`"""
     return sorted(
         [
@@ -165,8 +164,8 @@ def find_current_eofs(cur_path):
     )
 
 
-def find_unique_safes(search_path):
-    file_set = set()
+def find_unique_safes(search_path: str):
+    file_set :set[Sentinel] = set()
     for filename in glob.glob(os.path.join(search_path, "S1*")):
         try:
             parsed_file = Sentinel(filename)
@@ -177,10 +176,10 @@ def find_unique_safes(search_path):
     return file_set
 
 
-def find_scenes_to_download(search_path="./", save_dir="./"):
+def find_scenes_to_download(search_path : str = "./", save_dir: str = "./"):
     """Parse the search_path directory for any Sentinel 1 products' date and mission"""
-    orbit_dts = []
-    missions = []
+    orbit_dts : list[datetime] = []
+    missions : list[str] = []
     # Check for already-downloaded orbit files, skip ones we have
     current_eofs = find_current_eofs(save_dir)
 
@@ -209,22 +208,20 @@ def find_scenes_to_download(search_path="./", save_dir="./"):
 
 
 def main(
-    search_path=".",
-    save_dir=".",
-    sentinel_file=None,
-    mission=None,
-    date=None,
+    search_path: str = ".",
+    save_dir: str = ".",
+    sentinel_file : str|None = None,
+    mission : str|None = None,
+    date : str|None = None,
     orbit_type: OrbitType = OrbitType.precise,
     force_asf: bool = False,
-    asf_user: str = "",
-    asf_password: str = "",
-    cdse_access_token: Optional[str] = None,
+    cdse_access_token: str|None = None,
     cdse_user: str = "",
     cdse_password: str = "",
     cdse_2fa_token: str = "",
-    netrc_file: Optional[Filename] = None,
+    netrc_file: Filename|None = None,
     max_workers: int = MAX_WORKERS,
-):
+) -> list[Path]:
     """Function used for entry point to download eofs"""
 
     if not os.path.exists(save_dir):
@@ -263,8 +260,6 @@ def main(
         save_dir=save_dir,
         orbit_type=orbit_type,
         force_asf=force_asf,
-        asf_user=asf_user,
-        asf_password=asf_password,
         cdse_access_token=cdse_access_token,
         cdse_user=cdse_user,
         cdse_password=cdse_password,

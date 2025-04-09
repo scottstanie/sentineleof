@@ -31,18 +31,18 @@ from datetime import datetime, date
 __all__ = ["Sentinel", "SentinelOrbit"]
 
 
-class Base(object):
+class Base:
     """Base parser to illustrate expected interface/ minimum data available"""
 
-    def __init__(self, filename, verbose=False):
+    def __init__(self, filename: str, verbose: bool=False):
         """
         Extract data from filename
             filename (str): name of SAR/InSAR product
             verbose (bool): print extra logging into about file loading
         """
-        self.filename = filename
-        self.full_parse()  # Run a parse to check validity of filename
-        self.verbose = verbose
+        self.filename : str = filename
+        _ = self.full_parse()  # Run a parse to check validity of filename
+        self.verbose : bool = verbose
 
     def __str__(self):
         return "{} product: {}".format(self.__class__.__name__, self.filename)
@@ -50,7 +50,7 @@ class Base(object):
     def __repr__(self):
         return "{}({!r})".format(self.__class__.__name__, self.filename)
 
-    def __lt__(self, other):
+    def __lt__(self, other: Base):
         return self.filename < other.filename
 
     def full_parse(self):
@@ -78,11 +78,11 @@ class Base(object):
         """List the fields returned by full_parse()"""
         return self.full_parse().keys()
 
-    def _get_field(self, fieldname):
+    def _get_field(self, fieldname: str):
         """Pick a specific field based on its name"""
         return self.full_parse()[fieldname]
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: str):
         """Access properties with uavsar[item] syntax"""
         return self._get_field(item)
 
@@ -137,8 +137,8 @@ class Sentinel(Base):
     )
     TIME_FMT = "%Y%m%dT%H%M%S"
 
-    def __init__(self, filename, **kwargs):
-        super().__init__(filename, **kwargs)
+    def __init__(self, filename: str, **kwargs):
+        super(Sentinel, self).__init__(filename, **kwargs)
 
     def __str__(self):
         return "{} {}, path {} from {}".format(
@@ -313,8 +313,8 @@ class SentinelOrbit(Base):
         r"(?P<stop_datetime>[T\d]{15})"
     )
 
-    def __init__(self, filename, **kwargs):
-        super().__init__(filename, **kwargs)
+    def __init__(self, filename: str, **kwargs):
+        super(SentinelOrbit, self).__init__(filename, **kwargs)
 
     def __str__(self):
         return "{} {} from {} to {}".format(
@@ -324,7 +324,7 @@ class SentinelOrbit(Base):
     def __lt__(self, other):
         return (self.start_time, self.filename) < (other.start_time, other.filename)
 
-    def __contains__(self, dt):
+    def __contains__(self, dt: datetime):
         """Checks if a datetime lies within the validity window"""
         return self.start_time < dt < self.stop_time
 
@@ -408,7 +408,7 @@ class SentinelOrbit(Base):
         elif o == "PREORB":
             return "predicted"
         else:
-            raise ValueError("unknown orbit type: %s" % self.filename)
+            raise ValueError(f"unknown orbit type: {self.filename}")
 
     @property
     def date(self) -> date:

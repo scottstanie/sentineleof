@@ -4,7 +4,6 @@ import getpass
 import netrc
 import os
 from pathlib import Path
-from typing import Optional
 
 from ._types import Filename
 from .log import logger as _logger
@@ -23,7 +22,7 @@ def check_netrc(netrc_file: Filename = "~/.netrc"):
         )
 
 
-def netrc_filename(netrc_file: Optional[Filename] = None) -> Path:
+def netrc_filename(netrc_file: Filename|None = None) -> Path:
     """
     Returns ``netrc_file`` or $NETRC, or ``~/.netrc``
     """
@@ -33,7 +32,7 @@ def netrc_filename(netrc_file: Optional[Filename] = None) -> Path:
 
 
 def setup_netrc(
-    netrc_file: Optional[Filename] = None,
+    netrc_file: Filename|None = None,
     host: str = NASA_HOST,
     dryrun: bool = False,
 ):
@@ -96,7 +95,7 @@ def _file_is_0600(filename: Filename):
 
 
 def get_netrc_credentials(
-    host: str, netrc_file: Optional[Filename] = None
+    host: str, netrc_file: Filename|None = None
 ) -> tuple[str, str]:
     """
     Get username and password from netrc file for a given host.

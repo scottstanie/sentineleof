@@ -1,5 +1,4 @@
 from functools import cache
-from typing import Optional, Literal
 
 import requests
 import xml.etree.ElementTree as ET
@@ -32,7 +31,7 @@ def list_public_bucket(bucket_name: str, prefix: str = "") -> list[str]:
         If there's an error in the HTTP request.
     """
     endpoint = f"https://{bucket_name}.s3.amazonaws.com"
-    marker: Optional[str] = None
+    marker: str|None = None
     keys: list[str] = []
 
     while True:

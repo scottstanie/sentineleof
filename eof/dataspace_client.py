@@ -2,10 +2,11 @@
 from __future__ import annotations
 from abc import abstractmethod
 
+from collections.abc import Iterable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Iterable, List, Optional, Sequence
+from typing import cast, override
 
 import requests
 
@@ -36,13 +37,13 @@ class DataspaceSession(AbstractSession):
     """
     def __init__(
         self,
-        access_token: Optional[str] = None,
+        access_token: str|None = None,
         username: str = "",
         password: str = "",
         token_2fa: str = "",
-        netrc_file: Optional[Filename] = None,
+        netrc_file: Filename|None = None,
     ):
-        self._access_token = access_token
+        self._access_token : str|None = access_token
         if access_token:
             logger.debug("Using provided CDSE access token")
         else:
@@ -73,12 +74,13 @@ class DataspaceSession(AbstractSession):
         """Tells whether the object has been correctly initialized"""
         return bool(self._access_token)
 
+    @override
     def download_all(
         self,
-        eofs: Sequence[dict],
+        eofs: Sequence[dict[str,str]],
         output_directory: Filename,
         max_workers: int = 3,
-    ) -> List[Path]:
+    ) -> list[Path]:
         """Download all the specified orbit products."""
         return download_all(
             query_results=eofs,
@@ -98,6 +100,7 @@ class DataspaceClient(Client):
     - authentication method that'll return a :class:`DataspaceSession`
       object which will permit downloading eof products found.
     """
+    @override
     def authenticate(self, *args, **kwargs) -> DataspaceSession:
         """
         Authenticate to the client.
@@ -108,11 +111,11 @@ class DataspaceClient(Client):
         3. dataspace entry from ``netrc_file`` (or $NETRC, or ``~/.netrc``)
 
         Args:
-            access_token (Optional[str]): already esstablished access token to Copernicus Dataspace
+            access_token (str|None): already esstablished access token to Copernicus Dataspace
             username (str): Optional user name
             password (str): Optional use password
             token_2fa (str): Optional 2FA Token
-            netrc_file (Optional[Filename]): Optional name of netrc file
+            netrc_file (Filename|None): Optional name of netrc file
 
         :raise FileNotFoundError: if ``netrc`` file cannot be found.
         :raise ValueError: if there is no entry for dataspace host in the netrc
@@ -126,7 +129,7 @@ class DataspaceClient(Client):
         t1: datetime,
         satellite_id: str,
         product_type: str = "AUX_POEORB",
-    ) -> list[dict]:
+    ) -> list[dict[str,str]]:
         """
         Returns the only orbit file (of type ``product_type``, and for
         the given ``satellite_id``) that contains the the time range
@@ -140,6 +143,7 @@ class DataspaceClient(Client):
                 product_type,
         )
 
+    @override
     def query_orbit_by_dt(
         self,
         orbit_dts : Sequence[datetime],
@@ -147,7 +151,7 @@ class DataspaceClient(Client):
         orbit_type: OrbitType = OrbitType.precise,
         t0_margin: timedelta = Client.T0,
         t1_margin: timedelta = Client.T1,
-    ) -> List[dict]:
+    ) -> list[dict[str,str]]:
         """Query the Copernicus dataspace API for product info for the specified missions/orbit_dts.
 
         This method returns a single orbit file that completely includes
@@ -174,7 +178,7 @@ class DataspaceClient(Client):
 
         Returns
         -------
-        list[dict]
+        list[dict[str,str]]
             list of results from the query
         """
         # Forward the call to the specialized Query objet
@@ -186,13 +190,14 @@ class DataspaceClient(Client):
                 t1_margin,
         )
 
+    @override
     def query_orbits_by_dt_range(
         self,
         first_dt: datetime,
         last_dt: datetime,
         missions: Sequence[str] = (),
         orbit_type: OrbitType = OrbitType.precise,
-    ) -> List[dict]:
+    ) -> list[dict[str,str]]:
         """Query the Copernicus dataspace API for product info for the specified missions/orbit time range.
 
         This method returns the information all orbit files that intersect the requested range.
@@ -211,7 +216,7 @@ class DataspaceClient(Client):
 
         Returns
         -------
-        list[dict]
+        list[dict[str,str]]
             list of results from the query.
             This result can be directly used by:method:`DataspaceClient.download_all`.
         """
@@ -224,7 +229,7 @@ class DataspaceClient(Client):
         )
 
 
-def query_orbit_file_service(query: str, how_many: int = 0) -> list[dict]:
+def query_orbit_file_service(query: str, how_many: int = 0) -> list[dict[str,str]]:
     """Submit a request to the Orbit file query REST service.
 
     Parameters
@@ -267,15 +272,15 @@ def query_orbit_file_service(query: str, how_many: int = 0) -> list[dict]:
     json_response = response.json()
     logger.debug("json_response: %s", json_response)
 
-    query_results = json_response["value"]
+    query_results : list[dict[str,str]] = json_response["value"]
 
     return query_results
 
 
 def get_access_token(
-    username: Optional[str],
-    password: Optional[str],
-    token_2fa: Optional[str]
+    username: str|None,
+    password: str|None,
+    token_2fa: str|None
 ) -> str:
     """Get an access token for the Copernicus Data Space Ecosystem (CDSE) API.
 
@@ -304,7 +309,7 @@ def get_access_token(
 
     # Parse the access token from the response
     try:
-        access_token = r.json()["access_token"]
+        access_token = cast(str, r.json()["access_token"])
         return access_token
     except KeyError:
         raise RuntimeError(
@@ -313,7 +318,7 @@ def get_access_token(
 
 
 def download_orbit_file(
-    request_url, output_directory, orbit_file_name, access_token
+    request_url: str, output_directory: Filename, orbit_file_name: str, access_token: str
 ) -> Path:
     """Downloads an Orbit file using the provided request URL.
 
@@ -373,16 +378,16 @@ def download_orbit_file(
 
 
 def download_all(
-    query_results: Sequence[dict],
+    query_results: Sequence[dict[str,str]],
     output_directory: Filename,
-    access_token: Optional[str],
+    access_token: str|None,
     max_workers: int = 3,
-) -> List[Path]:
+) -> list[Path]:
     """Download all the specified orbit products.
 
     Parameters
     ----------
-    query_results : list[dict]
+    query_results : list[dict[str,str]]
         list of results from the query
     output_directory : str | Path
         Directory to save the orbit files to.
@@ -405,8 +410,8 @@ def download_all(
     #     query_results, start_time, stop_time
     # )
 
-    output_names = []
-    download_urls = []
+    output_names : list[str] = []
+    download_urls : list[str] = []
     for query_result in query_results:
         orbit_file_request_id = query_result["Id"]
 
@@ -418,8 +423,7 @@ def download_all(
         output_names.append(orbit_file_name)
 
         logger.debug(
-            f"Downloading Orbit file {orbit_file_name} from service endpoint "
-            f"{download_url}"
+            "Downloading Orbit file %s from service endpoint %s", orbit_file_name, download_url
         )
 
     downloaded_paths = []
@@ -494,7 +498,7 @@ class _QueryOrbitFile:
         t1: datetime,
         satellite_id: str,
         product_type: str = "AUX_POEORB",
-    ) -> list[dict]:
+    ) -> list[dict[str,str]]:
         """
         Returns:
         - either the only orbit file (of type ``product_type``, and for
@@ -522,7 +526,7 @@ class _QueryOrbitFile:
         last_dt: datetime,
         mission : str,
         orbit_type: OrbitType,
-    ) -> List[dict]:
+    ) -> list[dict[str,str]]:
         """
         Internal method that wraps :method:`_QueryOrbitFile.query_orbit`.
 
@@ -531,7 +535,7 @@ class _QueryOrbitFile:
         orbit products if no "precise" ones were found (and requested).
         """
         expect_only_one_result = self._do_get_number_of_elements() == 1
-        all_results = []
+        all_results : list[dict[str,str]] = []
 
         # Only check for precise orbits if that is what we want
         if orbit_type == OrbitType.precise:
@@ -579,7 +583,7 @@ class _QueryOneOrbitFileAroundRange(_QueryOrbitFile):
         orbit_type: OrbitType = OrbitType.precise,
         t0_margin: timedelta = Client.T0,
         t1_margin: timedelta = Client.T1,
-    ) -> List[dict]:
+    ) -> list[dict[str,str]]:
         """Query the Copernicus dataspace API for product info for the specified missions/orbit_dts.
 
         This method returns a single orbit file that completely includes
@@ -602,11 +606,11 @@ class _QueryOneOrbitFileAroundRange(_QueryOrbitFile):
 
         Returns
         -------
-        list[dict]
+        list[dict[str,str]]
             list of results from the query
         """
         remaining_dates: list[tuple[str, datetime]] = []
-        all_results = []
+        all_results : list[dict[str,str]] = []
         for dt, mission in zip(orbit_dts, missions):
             # Only check for precise orbits if that is what we want
             if orbit_type == OrbitType.precise:
@@ -631,6 +635,7 @@ class _QueryOneOrbitFileAroundRange(_QueryOrbitFile):
             logger.warning("The following dates were not found: %s", remaining_dates)
         return all_results
 
+    @override
     def _do_get_query_template(self) -> str:
         """
         Variation point that returns the specialized query request
@@ -644,6 +649,7 @@ class _QueryOneOrbitFileAroundRange(_QueryOrbitFile):
         )
         return query_template
 
+    @override
     def _do_get_number_of_elements(self) -> int:
         """
         Variation point for $top query parameter: return at most one
@@ -662,7 +668,7 @@ class _QueryAllOrbitFileWithinRange(_QueryOrbitFile):
         last_dt: datetime,
         missions: Sequence[str] = (),
         orbit_type: OrbitType = OrbitType.precise,
-    ) -> List[dict]:
+    ) -> list[dict[str,str]]:
         """Query the Copernicus dataspace API for product info for the specified missions/orbit_dts.
 
         Parameters
@@ -683,12 +689,12 @@ class _QueryAllOrbitFileWithinRange(_QueryOrbitFile):
 
         Returns
         -------
-        list[dict]
+        list[dict[str,str]]
             list of results from the query
         """
         if not missions:
             missions = ("S1A", "S1B", "S1C")
-        all_results = []
+        all_results : list[dict[str,str]] = []
         for mission in missions:
             results = self._search_dt_range(
                     first_dt, last_dt,
@@ -699,6 +705,7 @@ class _QueryAllOrbitFileWithinRange(_QueryOrbitFile):
 
         return all_results
 
+    @override
     def _do_get_query_template(self) -> str:
         """
         Variation point that returns the specialized query request
@@ -718,6 +725,7 @@ class _QueryAllOrbitFileWithinRange(_QueryOrbitFile):
         )
         return query_template
 
+    @override
     def _do_get_number_of_elements(self) -> int:
         """
         Variation point for $top query parameter: return as many orbit

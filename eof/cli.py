@@ -5,14 +5,13 @@ CLI tool for downloading Sentinel 1 EOF files
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 import click
 
 from ._types import Filename
 
 from eof import download, log
-from eof._auth import NASA_HOST, DATASPACE_HOST, setup_netrc
+from eof._auth import DATASPACE_HOST, setup_netrc
 from eof.client import OrbitType
 
 
@@ -128,13 +127,13 @@ def cli(
     debug: bool,
     asf_user: str = "",
     asf_password: str = "",
-    cdse_access_token: Optional[str] = None,
+    cdse_access_token: str|None = None,
     cdse_user: str = "",
     cdse_password: str = "",
     cdse_2fa_token: str = "",
     ask_password: bool = False,
     update_netrc: bool = False,
-    netrc_file: Optional[Filename] = None,
+    netrc_file: Filename|None = None,
     max_workers: int = 3,
 ):
     """Download Sentinel precise orbit files.
@@ -153,7 +152,7 @@ def cli(
                 netrc_file=netrc_file, host=DATASPACE_HOST, dryrun=dryrun
             )
 
-    download.main(
+    _ = download.main(
         search_path=search_path,
         save_dir=save_dir,
         sentinel_file=sentinel_file,
