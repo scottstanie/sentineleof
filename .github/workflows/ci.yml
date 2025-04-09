@@ -9,7 +9,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
         include:
         - os: windows-latest
           python-version: "3.12"
@@ -29,9 +29,6 @@ jobs:
         python -m pip install .
     - name: Setup Dummy ~/.netrc file
       run: |
-        echo "machine urs.earthdata.nasa.gov" >> ~/.netrc
-        echo "  login asdf" >> ~/.netrc
-        echo "  password asdf" >> ~/.netrc
         echo "machine dataspace.copernicus.eu" >> ~/.netrc
         echo "  login asdf" >> ~/.netrc
         echo "  password asdf" >> ~/.netrc
@@ -42,4 +39,4 @@ jobs:
         cp eof/tests/baseline/precise_filenames.txt ~/.cache/sentineleof/
     - name: Test with pytest
       run: |
-        python -m pytest -v --doctest-modules --ignore=eof/__main__.py
+        python -m pytest -v --doctest-modules --record-mode none --ignore=eof/__main__.py

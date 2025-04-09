@@ -2,10 +2,10 @@
 """Client interface"""
 
 from abc import abstractmethod
+from collections.abc import Sequence
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import List, Sequence, Union
 
 from ._select_orbit import T_ORBIT
 from ._types import Filename
@@ -32,7 +32,7 @@ class AbstractSession:
             eofs,
             output_directory: Filename,
             max_workers: int = 3,
-    ) -> Union[List[Path], List[Filename]]:
+    ) -> list[Path]|list[Filename]:
         """Download all the specified orbit products."""
 
 
@@ -52,7 +52,7 @@ class Client:
             orbit_type: OrbitType,
             t0_margin: timedelta = T0,
             t1_margin: timedelta = T1,
-    ) -> Union[List[dict],List[str]]:
+    ) -> list[dict]|list[str]:
         """
         Request orbit information according to a list of datetimes.
 
@@ -74,7 +74,7 @@ class Client:
             last_dt: datetime,
             missions: Sequence[str] = (),
             orbit_type: OrbitType = OrbitType.precise,
-    ) -> Union[List[dict],List[str]]:
+    ) -> list[dict]|list[str]:
         """
         Request orbit information according to a range of datetimes.
 
@@ -91,11 +91,11 @@ class Client:
 
     def query_orbit_for_product(
             self,
-            s1_product: Union[Filename, S1Product],
+            s1_product: Filename|S1Product,
             orbit_type: OrbitType = OrbitType.precise,
             t0_margin: timedelta = T0,
             t1_margin: timedelta = T1,
-    ) -> Union[List[dict],List[str]]:
+    ) -> list[dict]|list[str]:
         """
         Request orbit information according to a Sentinel-1 filename
 

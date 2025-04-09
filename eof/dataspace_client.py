@@ -50,7 +50,9 @@ class DataspaceSession(AbstractSession):
                 if not (username and password):
                     logger.debug(f"Get credentials form netrc ({netrc_file!r})")
                     # Shall we keep username if explicitly set?
-                    username, password = get_netrc_credentials(DATASPACE_HOST, netrc_file)
+                    username, password = get_netrc_credentials(
+                        DATASPACE_HOST, netrc_file
+                    )
                 else:
                     logger.debug("Using provided username and password")
                 self._access_token = get_access_token(username, password, token_2fa)
@@ -155,7 +157,7 @@ class DataspaceClient(Client):
         ----------
         orbit_dts : list[datetime.datetime]
             List of datetimes to query for
-        missions : list[str], choices = {"S1A", "S1B"}
+        missions : list[str], choices = {"S1A", "S1B", "S1C"}
             List of missions to query for. Must be same length as orbit_dts
         orbit_type (OrbitType): precise or restituted
             String identifying the type of orbit file to query for.
@@ -199,7 +201,7 @@ class DataspaceClient(Client):
         ----------
         first_dt (str datetime.datetime): first datetime for orbit coverage
         last_dt (str datetime.datetime): last datetime for orbit coverage
-        missions (list[str]): optional, to specify S1A or S1B
+        missions (list[str]): optional, to specify S1A, S1B or S1C
             No input downloads both.
         orbit_type : OrbitType, choices = {precise, restituted}
 
@@ -271,9 +273,9 @@ def query_orbit_file_service(query: str, how_many: int = 0) -> list[dict]:
 
 
 def get_access_token(
-        username: Optional[str],
-        password: Optional[str],
-        token_2fa: Optional[str]
+    username: Optional[str],
+    password: Optional[str],
+    token_2fa: Optional[str]
 ) -> str:
     """Get an access token for the Copernicus Data Space Ecosystem (CDSE) API.
 
@@ -502,7 +504,7 @@ class _QueryOrbitFile:
 
         The actual behaviour will depend on the exact type of ``self``.
         """
-        assert satellite_id in {"S1A", "S1B"}
+        assert satellite_id in {"S1A", "S1B", "S1C"}
         assert product_type in {"AUX_POEORB", "AUX_RESORB"}
         # return run_query(t0, t1, satellite_id, product_type)
         # Construct the query based on the time range parsed from the input file
@@ -587,7 +589,7 @@ class _QueryOneOrbitFileAroundRange(_QueryOrbitFile):
         ----------
         orbit_dts : list[datetime.datetime]
             List of datetimes to query for
-        missions : list[str], choices = {"S1A", "S1B"}
+        missions : list[str], choices = {"S1A", "S1B", "S1C"}
             List of missions to query for. Must be same length as orbit_dts
         orbit_type : OrbitType, choices = {"precise", "restituted"}
             String identifying the type of orbit file to query for.
@@ -667,7 +669,7 @@ class _QueryAllOrbitFileWithinRange(_QueryOrbitFile):
         ----------
         orbit_dts : list[datetime.datetime]
             List of datetimes to query for
-        missions (list[str]): optional, to specify S1A or S1B
+        missions (list[str]): optional, to specify S1A, S1B or S1C
             No input downloads both.
         orbit_type : OrbitType, choices = {precise, restituted}
             String identifying the type of orbit file to query for.
@@ -685,7 +687,7 @@ class _QueryAllOrbitFileWithinRange(_QueryOrbitFile):
             list of results from the query
         """
         if not missions:
-            missions = ("S1A", "S1B")
+            missions = ("S1A", "S1B", "S1C")
         all_results = []
         for mission in missions:
             results = self._search_dt_range(

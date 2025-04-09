@@ -46,10 +46,10 @@ from eof.client import OrbitType
 @click.option(
     "--mission",
     "-m",
-    type=click.Choice(["S1A", "S1B"]),
+    type=click.Choice(["S1A", "S1B", "S1C"]),
     help=(
         "If using `--date`, optionally specify Sentinel satellite to download"
-        " (default: gets both S1A and S1B)"
+        " (default: gets S1A, S1B, and S1C)"
     ),
 )
 @click.option(
@@ -91,11 +91,11 @@ from eof.client import OrbitType
 )
 @click.option(
     "--asf-user",
-    help="ASF username. If not provided the program asks for it",
+    help="(Deprecated) ASF username. ASF orbits are now publicly available",
 )
 @click.option(
     "--asf-password",
-    help="ASF password. If not provided the program asks for it",
+    help="(Deprecated) ASF password. ASF orbits are now publicly available",
 )
 @click.option(
     "--ask-password",
@@ -149,9 +149,9 @@ def cli(
     if ask_password:
         dryrun = not update_netrc
         if not force_asf and not (cdse_user and cdse_password):
-            cdse_user, cdse_password = setup_netrc(netrc_file=netrc_file, host=DATASPACE_HOST, dryrun=dryrun)
-        if not (cdse_user and cdse_password) and not (asf_user and asf_password):
-            asf_user, asf_password = setup_netrc(netrc_file=netrc_file, host=NASA_HOST, dryrun=dryrun)
+            cdse_user, cdse_password = setup_netrc(
+                netrc_file=netrc_file, host=DATASPACE_HOST, dryrun=dryrun
+            )
 
     download.main(
         search_path=search_path,
@@ -161,8 +161,6 @@ def cli(
         date=date,
         orbit_type=OrbitType[orbit_type],
         force_asf=force_asf,
-        asf_user=asf_user,
-        asf_password=asf_password,
         cdse_access_token=cdse_access_token,
         cdse_user=cdse_user,
         cdse_password=cdse_password,

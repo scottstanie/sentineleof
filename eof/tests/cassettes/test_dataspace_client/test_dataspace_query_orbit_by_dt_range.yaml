@@ -9,7 +9,7 @@ interactions:
       Connection:
       - keep-alive
       User-Agent:
-      - python-requests/2.31.0
+      - python-requests/2.32.3
     method: GET
     uri: https://catalogue.dataspace.copernicus.eu/odata/v1/Products?%24filter=Collection%2FName+eq+%27SENTINEL-1%27+and+startswith%28Name%2C%27S1A%27%29+and+contains%28Name%2C%27AUX_POEORB%27%29+and+ContentDate%2FStart+lt+%272020-01-12T00%3A00%3A00.000000Z%27+and+ContentDate%2FEnd+gt+%272020-01-01T00%3A00%3A00.000000Z%27&%24orderby=ContentDate%2FStart+asc
   response:
@@ -33,13 +33,13 @@ interactions:
       Content-Type:
       - application/json
       Date:
-      - Wed, 11 Sep 2024 01:06:08 GMT
+      - Mon, 07 Apr 2025 16:49:32 GMT
       Strict-Transport-Security:
       - max-age=15724800; includeSubDomains
       request-id:
-      - 61bc4c69-85b9-4158-82ba-1c7cf9c84af7
+      - 4a80d992-b4d6-4fec-bbf6-9b969d1d3eca
       x-envoy-upstream-service-time:
-      - '379'
+      - '135'
     status:
       code: 200
       message: OK

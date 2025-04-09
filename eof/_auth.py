@@ -79,7 +79,7 @@ def setup_netrc(
     username, password = _get_username_pass(host)
     if not dryrun:
         # Add account to netrc file
-        n.hosts[host] = (username, '', password)
+        n.hosts[host] = (username, "", password)
         print(f"Saving credentials to {netrc_file} (machine={host}).")
         with open(netrc_file, "w") as f:
             f.write(str(n))
@@ -95,7 +95,9 @@ def _file_is_0600(filename: Filename):
     return oct(Path(filename).stat().st_mode)[-4:] == "0600"
 
 
-def get_netrc_credentials(host: str, netrc_file: Optional[Filename] = None) -> tuple[str, str]:
+def get_netrc_credentials(
+    host: str, netrc_file: Optional[Filename] = None
+) -> tuple[str, str]:
     """
     Get username and password from netrc file for a given host.
 
@@ -121,7 +123,8 @@ def get_netrc_credentials(host: str, netrc_file: Optional[Filename] = None) -> t
 def _get_username_pass(host: str):
     """If netrc is not set up, get username/password via command line input."""
     if host == NASA_HOST:
-        from .asf_client import SIGNUP_URL as signup_url
+        # TODO: refactor the clients such that this wouldn't get called for NASA/ASF
+        return ("", "")
     elif host == DATASPACE_HOST:
         from .dataspace_client import SIGNUP_URL as signup_url
     else:

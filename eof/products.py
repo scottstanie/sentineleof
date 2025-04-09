@@ -22,6 +22,7 @@
 # https://github.com/scottstanie/apertools/blob/77e6330499adc01c3860f49ee6b3875c49532b76/apertools/parsers.py
 
 """Utilities for parsing file names of SAR products for relevant info."""
+
 from __future__ import annotations
 
 import re
@@ -47,7 +48,7 @@ class Base(object):
         return "{} product: {}".format(self.__class__.__name__, self.filename)
 
     def __repr__(self):
-        return str(self)
+        return "{}({!r})".format(self.__class__.__name__, self.filename)
 
     def __lt__(self, other):
         return self.filename < other.filename
@@ -99,7 +100,7 @@ class Sentinel(Base):
     File name format:
         MMM_BB_TTTR_LFPP_YYYYMMDDTHHMMSS_YYYYMMDDTHHMMSS_OOOOOO_DDDDDD_CCCC.EEEE
 
-    MMM: mission/satellite S1A or S1B
+    MMM: mission/satellite S1A, S1B or S1C
     BB: Mode/beam identifier. The S1-S6 beams apply to SM products IW,
       EW and WV identifiers appply to products from the respective modes.
     TTT: Product Type: RAW, SLC, GRD, OCN
@@ -122,7 +123,7 @@ class Sentinel(Base):
     """
 
     FILE_REGEX = re.compile(
-        r"(?P<mission>S1A|S1B)_"
+        r"(?P<mission>S1A|S1B|S1C)_"
         r"(?P<beam>[\w\d]{2})_"
         r"(?P<product_type>[\w_]{3})"
         r"(?P<resolution_class>[FHM_])_"
@@ -137,8 +138,7 @@ class Sentinel(Base):
     TIME_FMT = "%Y%m%dT%H%M%S"
 
     def __init__(self, filename, **kwargs):
-        super(Sentinel, self).__init__(filename, **kwargs)
-        # The name of the unzipped .SAFE directory (with .zip stripped)
+        super().__init__(filename, **kwargs)
 
     def __str__(self):
         return "{} {}, path {} from {}".format(
@@ -209,7 +209,7 @@ class Sentinel(Base):
 
     @property
     def mission(self) -> str:
-        """Returns satellite/mission of product (S1A/S1B)
+        """Returns satellite/mission of product (S1A/S1B/S1C)
 
         Example:
             >>> s = Sentinel('S1A_IW_SLC__1SDV_20180408T043025_20180408T043053_021371_024C9B_1B70')
@@ -248,6 +248,8 @@ class Sentinel(Base):
             return ((self.absolute_orbit - 73) % 175) + 1
         elif self.mission == "S1B":
             return ((self.absolute_orbit - 27) % 175) + 1
+        elif self.mission == "S1C":
+            return ((self.absolute_orbit - 172) % 175) + 1
         raise ValueError(f"Invalid mission {self.mission!r}")
 
     @property
@@ -281,7 +283,7 @@ class SentinelOrbit(Base):
     The filename must comply with the following pattern:
         MMM_CCCC_TTTTTTTTTT_<instance_id>.EOF
 
-    MMM = mission, S1A or S1B
+    MMM = mission, S1A, S1B or S1C
     CCCC =  File Class, we only want OPER = routine operational
     TTTTTTTTTT = File type
      = FFFF DDDDDD
@@ -304,7 +306,7 @@ class SentinelOrbit(Base):
 
     TIME_FMT = "%Y%m%dT%H%M%S"
     FILE_REGEX = (
-        r"(?P<mission>S1A|S1B)_OPER_AUX_"
+        r"(?P<mission>S1A|S1B|S1C)_OPER_AUX_"
         r"(?P<orbit_type>[\w_]{6})_OPOD_"
         r"(?P<created_datetime>[T\d]{15})_"
         r"V(?P<start_datetime>[T\d]{15})_"
@@ -312,7 +314,7 @@ class SentinelOrbit(Base):
     )
 
     def __init__(self, filename, **kwargs):
-        super(SentinelOrbit, self).__init__(filename, **kwargs)
+        super().__init__(filename, **kwargs)
 
     def __str__(self):
         return "{} {} from {} to {}".format(
@@ -341,7 +343,7 @@ class SentinelOrbit(Base):
 
     @property
     def mission(self) -> str:
-        """Returns satellite/mission of product (S1A/S1B)
+        """Returns satellite/mission of product (S1A/S1B/S1C)
 
         Example:
             >>> s = SentinelOrbit('S1A_OPER_AUX_POEORB_OPOD_20200121T120654_V20191231T225942_20200102T005942.EOF')
