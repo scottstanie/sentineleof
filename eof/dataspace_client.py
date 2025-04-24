@@ -6,7 +6,7 @@ from collections.abc import Iterable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import cast, override
+from typing import cast
 
 import requests
 
@@ -74,7 +74,6 @@ class DataspaceSession(AbstractSession):
         """Tells whether the object has been correctly initialized"""
         return bool(self._access_token)
 
-    @override
     def download_all(
         self,
         eofs: Sequence[dict[str,str]],
@@ -100,7 +99,6 @@ class DataspaceClient(Client):
     - authentication method that'll return a :class:`DataspaceSession`
       object which will permit downloading eof products found.
     """
-    @override
     def authenticate(self, *args, **kwargs) -> DataspaceSession:
         """
         Authenticate to the client.
@@ -143,7 +141,6 @@ class DataspaceClient(Client):
                 product_type,
         )
 
-    @override
     def query_orbit_by_dt(
         self,
         orbit_dts : Sequence[datetime],
@@ -190,7 +187,6 @@ class DataspaceClient(Client):
                 t1_margin,
         )
 
-    @override
     def query_orbits_by_dt_range(
         self,
         first_dt: datetime,
@@ -635,7 +631,6 @@ class _QueryOneOrbitFileAroundRange(_QueryOrbitFile):
             logger.warning("The following dates were not found: %s", remaining_dates)
         return all_results
 
-    @override
     def _do_get_query_template(self) -> str:
         """
         Variation point that returns the specialized query request
@@ -649,7 +644,6 @@ class _QueryOneOrbitFileAroundRange(_QueryOrbitFile):
         )
         return query_template
 
-    @override
     def _do_get_number_of_elements(self) -> int:
         """
         Variation point for $top query parameter: return at most one
@@ -705,7 +699,6 @@ class _QueryAllOrbitFileWithinRange(_QueryOrbitFile):
 
         return all_results
 
-    @override
     def _do_get_query_template(self) -> str:
         """
         Variation point that returns the specialized query request
@@ -725,7 +718,6 @@ class _QueryAllOrbitFileWithinRange(_QueryOrbitFile):
         )
         return query_template
 
-    @override
     def _do_get_number_of_elements(self) -> int:
         """
         Variation point for $top query parameter: return as many orbit

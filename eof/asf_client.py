@@ -10,7 +10,6 @@ import os
 from collections.abc import Iterable, Sequence
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import override
 
 import requests
 
@@ -66,7 +65,6 @@ class ASFSession(AbstractSession):
             _ = f.write(response.content)
         return fname
 
-    @override
     def download_all(
         self,
         eofs: list[str],
@@ -119,7 +117,6 @@ class ASFClient(Client):
             OrbitType.restituted: None
         }
 
-    @override
     def authenticate(self) -> ASFSession:
         """
         Returns an ASF session object.
@@ -127,7 +124,6 @@ class ASFClient(Client):
         """
         return ASFSession()
 
-    @override
     def query_orbit_by_dt(
             self,
             orbit_dts: Sequence[datetime],
@@ -244,7 +240,6 @@ class ASFClient(Client):
 
         return urls
 
-    @override
     def query_orbits_by_dt_range(
         self,
         first_dt: datetime,
