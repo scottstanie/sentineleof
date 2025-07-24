@@ -307,7 +307,7 @@ class SentinelOrbit(Base):
 
     TIME_FMT = "%Y%m%dT%H%M%S"
     FILE_REGEX = (
-        r"(?P<mission>S1A|S1B|S1C|S1D|S1D)_OPER_AUX_"
+        r"(?P<mission>S1A|S1B|S1C|S1D|S1E)_OPER_AUX_"
         r"(?P<orbit_type>[\w_]{6})_OPOD_"
         r"(?P<created_datetime>[T\d]{15})_"
         r"V(?P<start_datetime>[T\d]{15})_"
