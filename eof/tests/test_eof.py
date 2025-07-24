@@ -16,18 +16,21 @@ def test_find_scenes_to_download(tmpdir):
             "S1B_IW_SLC__1SDV_20180502T043026_20180502T043054_021721_025793_5C18.zip"
         )
         name3 = "S1C_IW_SLC__1SDV_20250331T060116_20250331T060143_001681_002CD0_8D44"
+        # Fake S1D name
+        name4 = "S1D_IW_SLC__1SDV_20250731T060116_20250731T060143_001681_002CD0_8D44"
         open(name1, "w").close()
         open(name2, "w").close()
         open(name3, "w").close()
+        open(name4, "w").close()
         orbit_dates, missions = download.find_scenes_to_download(search_path=".")
 
+        # S1D ignored for now
+        assert sorted(missions) == ["S1A", "S1B", "S1C"]
         assert sorted(orbit_dates) == [
             datetime.datetime(2018, 4, 20, 4, 30, 26),
             datetime.datetime(2018, 5, 2, 4, 30, 26),
             datetime.datetime(2025, 3, 31, 6, 1, 16),
         ]
-
-        assert sorted(missions) == ["S1A", "S1B", "S1C"]
 
 
 @pytest.mark.vcr

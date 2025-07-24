@@ -62,3 +62,16 @@ def test_s1c():
     assert p.relative_orbit == 110
     assert p.polarization == "DV"
     assert p.mission == "S1C"
+
+
+def test_s1d_fake_orbit_issue_74():
+    """Tests ability to handle S1D: https://github.com/scottstanie/sentineleof/issues/74 ."""
+    fname = (
+        "S1D_OPER_AUX_RESORB_OPOD_20250703T092541_V20250703T045039_20250703T080809.EOF"
+    )
+    p = SentinelOrbit(fname)
+
+    assert p.filename == fname
+    assert p.start_time == datetime(2025, 7, 3, 4, 50, 39)
+    assert p.stop_time == datetime(2025, 7, 3, 8, 8, 9)
+    assert p.mission == "S1D"

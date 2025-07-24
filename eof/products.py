@@ -123,7 +123,7 @@ class Sentinel(Base):
     """
 
     FILE_REGEX = re.compile(
-        r"(?P<mission>S1A|S1B|S1C)_"
+        r"(?P<mission>S1A|S1B|S1C|S1D|S1E)_"
         r"(?P<beam>[\w\d]{2})_"
         r"(?P<product_type>[\w_]{3})"
         r"(?P<resolution_class>[FHM_])_"
@@ -250,6 +250,8 @@ class Sentinel(Base):
             return ((self.absolute_orbit - 27) % 175) + 1
         elif self.mission == "S1C":
             return ((self.absolute_orbit - 172) % 175) + 1
+        else:
+            raise ValueError(f"Unknown relative orbit for mission {self.mission}")
 
     @property
     def path(self):
@@ -305,7 +307,7 @@ class SentinelOrbit(Base):
 
     TIME_FMT = "%Y%m%dT%H%M%S"
     FILE_REGEX = (
-        r"(?P<mission>S1A|S1B|S1C)_OPER_AUX_"
+        r"(?P<mission>S1A|S1B|S1C|S1D|S1D)_OPER_AUX_"
         r"(?P<orbit_type>[\w_]{6})_OPOD_"
         r"(?P<created_datetime>[T\d]{15})_"
         r"V(?P<start_datetime>[T\d]{15})_"
