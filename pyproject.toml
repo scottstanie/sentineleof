@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sentineleof"
+version = "0.11.1"
+authors = [{name = "Scott Staniewicz", email = "scott.stanie@gmail.com"}]
+description = "Download precise orbit files for Sentinel 1 products"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Scientific/Engineering",
+    "Intended Audience :: Science/Research",
+]
+dependencies = [
+    "requests",
+    "click",
+    "python-dateutil",
+]
+
+[project.urls]
+Homepage = "https://github.com/scottstanie/sentineleof"
+
+[project.scripts]
+eof = "eof.cli:cli"
