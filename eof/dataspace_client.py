@@ -10,7 +10,6 @@ from typing import Optional
 import requests
 
 from ._auth import DATASPACE_HOST, get_netrc_credentials
-from ._select_orbit import T_ORBIT
 from ._types import Filename
 from .log import logger
 from .products import Sentinel as S1Product
@@ -29,7 +28,7 @@ SIGNUP_URL = "https://dataspace.copernicus.eu/"
 
 
 class DataspaceClient:
-    T0 = timedelta(seconds=T_ORBIT + 60)
+    T0 = timedelta(seconds=60)
     T1 = timedelta(seconds=60)
 
     def __init__(
@@ -164,8 +163,8 @@ class DataspaceClient:
             else:
                 # try with RESORB
                 products = DataspaceClient.query_orbit(
-                    dt - timedelta(seconds=T_ORBIT + 60),
-                    dt + timedelta(seconds=60),
+                    dt - t0_margin,
+                    dt + t1_margin,
                     mission,
                     product_type="AUX_RESORB",
                 )

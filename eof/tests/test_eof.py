@@ -92,3 +92,55 @@ def test_download_multiple(tmpdir, force_asf):
         ]
         assert len(out_paths) == 2
         assert sorted((p.name for p in out_paths)) == expected_eofs
+
+
+def test_edge_issue78():
+    """Test orbit selection with looser margins for issue 78.
+
+    This tests the edge case where a RESORB file starts slightly less than
+    one full orbit before the acquisition start time. With the new looser
+    defaults (60 second margins), this should work. With the old strict margins
+    (T_ORBIT + 60), it would fail.
+    """
+    from datetime import datetime, timedelta
+    from eof._select_orbit import last_valid_orbit, ValidityError, T_ORBIT
+
+    # Scene from issue 78
+    scene_start = datetime(2025, 7, 15, 11, 25, 31)
+    scene_stop = datetime(2025, 7, 15, 11, 25, 58)
+
+    # Three candidate RESORB files
+    orbit_files = [
+        products.SentinelOrbit(
+            "AUX_RESORB/S1A_OPER_AUX_RESORB_OPOD_20250715T120248_V20250715T080808_20250715T112538.EOF"
+        ),
+        products.SentinelOrbit(
+            "AUX_RESORB/S1A_OPER_AUX_RESORB_OPOD_20250715T133833_V20250715T094652_20250715T130422.EOF"
+        ),
+        products.SentinelOrbit(
+            "AUX_RESORB/S1A_OPER_AUX_RESORB_OPOD_20250715T150939_V20250715T112537_20250715T144307.EOF"
+        ),
+    ]
+
+    # With new looser margins (60 seconds), should select the second file
+    result = last_valid_orbit(
+        scene_start,
+        scene_stop,
+        orbit_files,
+        margin0=timedelta(seconds=60),
+        margin1=timedelta(seconds=60),
+    )
+    assert (
+        "S1A_OPER_AUX_RESORB_OPOD_20250715T133833_V20250715T094652_20250715T130422.EOF"
+        in result
+    )
+
+    # With strict margins (T_ORBIT + 60), none should be valid
+    with pytest.raises(ValidityError):
+        last_valid_orbit(
+            scene_start,
+            scene_stop,
+            orbit_files,
+            margin0=timedelta(seconds=T_ORBIT + 60),
+            margin1=timedelta(seconds=60),
+        )

@@ -80,7 +80,12 @@ class ASFClient:
         return eof_list
 
     def get_download_urls(
-        self, orbit_dts: list[datetime], missions: list[str], orbit_type="precise"
+        self,
+        orbit_dts: list[datetime],
+        missions: list[str],
+        orbit_type="precise",
+        margin0=None,
+        margin1=None,
     ) -> list[str]:
         """Find the download URL for an orbit file covering the specified datetime.
 
@@ -88,6 +93,8 @@ class ASFClient:
             orbit_dts (list[datetime]): requested dates for orbit coverage.
             missions (list[str]): specify S1A or S1B (should be same length as orbit_dts).
             orbit_type (str): either "precise" or "restituted".
+            margin0 (timedelta, optional): margin before the start time.
+            margin1 (timedelta, optional): margin after the end time.
 
         Returns:
             list[str]: URLs for the orbit files.
@@ -107,7 +114,16 @@ class ASFClient:
         urls = []
         for dt, mission in zip(orbit_dts, missions):
             try:
-                filename = last_valid_orbit(dt, dt, mission_to_eof_list[mission])
+                if margin0 is not None and margin1 is not None:
+                    filename = last_valid_orbit(
+                        dt,
+                        dt,
+                        mission_to_eof_list[mission],
+                        margin0=margin0,
+                        margin1=margin1,
+                    )
+                else:
+                    filename = last_valid_orbit(dt, dt, mission_to_eof_list[mission])
                 # Construct the full download URL using the bucket name from _asf_s3
                 url = f"https://{ASF_BUCKET_NAME}.s3.amazonaws.com/{filename}"
                 urls.append(url)
@@ -123,7 +139,11 @@ class ASFClient:
                 remaining_dts, remaining_missions = zip(*remaining_orbits)
                 urls.extend(
                     self.get_download_urls(
-                        remaining_dts, remaining_missions, orbit_type="restituted"
+                        remaining_dts,
+                        remaining_missions,
+                        orbit_type="restituted",
+                        margin0=margin0,
+                        margin1=margin1,
                     )
                 )
 

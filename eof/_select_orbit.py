@@ -24,11 +24,10 @@ def last_valid_orbit(
     t0: datetime,
     t1: datetime,
     data: Sequence[SentinelOrbit],
-    margin0=timedelta(seconds=T_ORBIT + 60),
+    margin0=timedelta(seconds=60),
     margin1=timedelta(seconds=60),
 ) -> str:
-    # Using a start margin of > 1 orbit so that the start of the orbit file will
-    # cover the ascending node crossing of the acquisition
+    # Orbit files must cover the acquisition time with a small margin
     candidates = [
         item
         for item in data

@@ -115,6 +115,11 @@ from eof._auth import DATASPACE_HOST, setup_netrc
     default=3,
     help="Number of parallel downloads to run. Note that CDSE has a limit of 4",
 )
+@click.option(
+    "--s1reader-compat",
+    is_flag=True,
+    help="Use strict orbit margins (>1 orbit before start) for OPERA s1-reader compatibility",
+)
 def cli(
     search_path: str,
     save_dir: str,
@@ -134,6 +139,7 @@ def cli(
     update_netrc: bool = False,
     netrc_file: Optional[Filename] = None,
     max_workers: int = 3,
+    s1reader_compat: bool = False,
 ):
     """Download Sentinel precise orbit files.
 
@@ -165,4 +171,5 @@ def cli(
         cdse_2fa_token=cdse_2fa_token,
         netrc_file=netrc_file,
         max_workers=max_workers,
+        s1reader_compat=s1reader_compat,
     )

@@ -60,6 +60,7 @@ def download_eofs(
     cdse_2fa_token: str = "",
     netrc_file: Optional[Filename] = None,
     max_workers: int = MAX_WORKERS,
+    s1reader_compat: bool = False,
 ) -> list[Path]:
     """Downloads and saves Sentinel precise or restituted orbit files (EOF).
 
@@ -99,6 +100,8 @@ def download_eofs(
         Path to .netrc file for authentication credentials.
     max_workers : int, default=MAX_WORKERS
         Number of parallel downloads to run.
+    s1reader_compat : bool, default=False
+        Use strict margins (>1 orbit before start) for OPERA s1-reader compatibility.
 
     Returns
     -------
@@ -128,6 +131,17 @@ def download_eofs(
     # First make sure all are datetimes if given string
     orbit_dts = [parse(dt) if isinstance(dt, str) else dt for dt in orbit_dts]
 
+    # Set margins based on s1reader compatibility mode
+    from datetime import timedelta
+    from ._select_orbit import T_ORBIT
+
+    if s1reader_compat:
+        t0_margin = timedelta(seconds=T_ORBIT + 60)
+        t1_margin = timedelta(seconds=60)
+    else:
+        t0_margin = timedelta(seconds=60)
+        t1_margin = timedelta(seconds=60)
+
     filenames = []
     dataspace_successful = False
 
@@ -144,11 +158,18 @@ def download_eofs(
             # try to search on scihub
             if sentinel_file:
                 query = client.query_orbit_for_product(
-                    sentinel_file, orbit_type=orbit_type
+                    sentinel_file,
+                    orbit_type=orbit_type,
+                    t0_margin=t0_margin,
+                    t1_margin=t1_margin,
                 )
             else:
                 query = client.query_orbit_by_dt(
-                    orbit_dts, missions, orbit_type=orbit_type
+                    orbit_dts,
+                    missions,
+                    orbit_type=orbit_type,
+                    t0_margin=t0_margin,
+                    t1_margin=t1_margin,
                 )
 
             if query:
@@ -173,7 +194,13 @@ def download_eofs(
             logger.warning("Dataspace failed, trying ASF")
 
         asf_client = ASFClient()
-        urls = asf_client.get_download_urls(orbit_dts, missions, orbit_type=orbit_type)
+        urls = asf_client.get_download_urls(
+            orbit_dts,
+            missions,
+            orbit_type=orbit_type,
+            margin0=t0_margin,
+            margin1=t1_margin,
+        )
         # Download and save all links in parallel
         pool = ThreadPool(processes=max_workers)
         result_url_dict = {
@@ -264,6 +291,7 @@ def main(
     cdse_2fa_token: str = "",
     netrc_file: Optional[Filename] = None,
     max_workers: int = MAX_WORKERS,
+    s1reader_compat: bool = False,
 ):
     """Function used for entry point to download eofs"""
 
@@ -311,4 +339,5 @@ def main(
         cdse_2fa_token=cdse_2fa_token,
         netrc_file=netrc_file,
         max_workers=max_workers,
+        s1reader_compat=s1reader_compat,
     )
