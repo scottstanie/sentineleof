@@ -33,7 +33,7 @@ def test_asf_client_download(tmp_path):
     dt = datetime.datetime(2020, 1, 1)
     mission = "S1A"
     urls = asfclient.get_download_urls([dt], [mission], orbit_type="precise")
-    expected = "https://s1-orbits.s3.amazonaws.com/AUX_POEORB/S1A_OPER_AUX_POEORB_OPOD_20210315T155112_V20191230T225942_20200101T005942.EOF"
+    expected = "https://s1-orbits.s3.amazonaws.com/AUX_POEORB/S1A_OPER_AUX_POEORB_OPOD_20210316T161714_V20191231T225942_20200102T005942.EOF"
     assert urls == [expected]
 
 
@@ -66,6 +66,6 @@ def test_query_resorb_s1_reader_issue68():
     urls = client.get_download_urls(orbit_dts, missions, orbit_type="restituted")
     assert len(urls) == 1
     expected = (
-        "S1A_OPER_AUX_RESORB_OPOD_20250310T220905_V20250310T180852_20250310T212622.EOF"
+        "S1A_OPER_AUX_RESORB_OPOD_20250310T234452_V20250310T194736_20250310T230506.EOF"
     )
     assert urls[0].split("/")[-1] == expected

@@ -11,6 +11,8 @@ from .products import SentinelOrbit
 T_ORBIT = (12 * 86400.0) / 175.0
 """Orbital period of Sentinel-1 in seconds"""
 
+DEFAULT_MARGIN = timedelta(seconds=60)
+
 
 class OrbitSelectionError(RuntimeError):
     pass
@@ -24,9 +26,13 @@ def last_valid_orbit(
     t0: datetime,
     t1: datetime,
     data: Sequence[SentinelOrbit],
-    margin0=timedelta(seconds=60),
-    margin1=timedelta(seconds=60),
+    margin0: timedelta | None = DEFAULT_MARGIN,
+    margin1: timedelta | None = DEFAULT_MARGIN,
 ) -> str:
+    if margin0 is None:
+        margin0 = DEFAULT_MARGIN
+    if margin1 is None:
+        margin1 = DEFAULT_MARGIN
     # Orbit files must cover the acquisition time with a small margin
     candidates = [
         item

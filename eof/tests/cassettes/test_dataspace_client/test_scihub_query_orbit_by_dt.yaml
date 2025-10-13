@@ -1,35 +1,96 @@
 interactions:
 - request:
+    body: client_id=cdse-public&username=scott.stanie%40gmail.com&password=1Z8Xmfl2KbSx%21&grant_type=password
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate, br, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '100'
+      Content-Type:
+      - application/x-www-form-urlencoded
+      User-Agent:
+      - python-requests/2.32.3
+    method: POST
+    uri: https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token
+  response:
+    body:
+      string: '{"access_token":"eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJYVUh3VWZKaHVDVWo0X3k4ZF8xM0hxWXBYMFdwdDd2anhob2FPLUxzREZFIn0.eyJleHAiOjE3NjAzNzAzNDgsImlhdCI6MTc2MDM2OTc0OCwianRpIjoiN2VkOWQ3ZDItMDY4ZS00YjhmLThiNjQtODgyYWNkNDc4OTZjIiwiaXNzIjoiaHR0cHM6Ly9pZGVudGl0eS5kYXRhc3BhY2UuY29wZXJuaWN1cy5ldS9hdXRoL3JlYWxtcy9DRFNFIiwiYXVkIjpbIkNMT1VERkVSUk9fUFVCTElDIiwiYWNjb3VudCJdLCJzdWIiOiI2YjUyOTQyZS0yMzEwLTRkZGItYjhkZS0wNjU1MjEyOTQwNjEiLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJjZHNlLXB1YmxpYyIsInNlc3Npb25fc3RhdGUiOiIzOTA4OGNhNi02NTZjLTQzMzMtODlmMy0yODY1YzYxODVmNTQiLCJhbGxvd2VkLW9yaWdpbnMiOlsiaHR0cHM6Ly9sb2NhbGhvc3Q6NDIwMCIsIioiLCJodHRwczovL3dvcmtzcGFjZS5zdGFnaW5nLWNkc2UtZGF0YS1leHBsb3Jlci5hcHBzLnN0YWdpbmcuaW50cmEuY2xvdWRmZXJyby5jb20iXSwicmVhbG1fYWNjZXNzIjp7InJvbGVzIjpbImNkc2UtanVweXRlcmxhYiIsImNvcGVybmljdXMtZ2VuZXJhbC1xdW90YSIsIm9mZmxpbmVfYWNjZXNzIiwidW1hX2F1dGhvcml6YXRpb24iLCJkZWZhdWx0LXJvbGVzLWNkYXMiLCJjb3Blcm5pY3VzLWdlbmVyYWwiXX0sInJlc291cmNlX2FjY2VzcyI6eyJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJzY29wZSI6IkFVRElFTkNFX1BVQkxJQyBvcGVuaWQgZW1haWwgcHJvZmlsZSBvbmRlbWFuZF9wcm9jZXNzaW5nIHVzZXItY29udGV4dCIsInNpZCI6IjM5MDg4Y2E2LTY1NmMtNDMzMy04OWYzLTI4NjVjNjE4NWY1NCIsImdyb3VwX21lbWJlcnNoaXAiOlsiL2FjY2Vzc19ncm91cHMvdXNlcl90eXBvbG9neS9jb3Blcm5pY3VzX2dlbmVyYWwiLCIvb3JnYW5pemF0aW9ucy9kZWZhdWx0LTZiNTI5NDJlLTIzMTAtNGRkYi1iOGRlLTA2NTUyMTI5NDA2MS9yZWd1bGFyX3VzZXIiXSwiZW1haWxfdmVyaWZpZWQiOnRydWUsIm5hbWUiOiJTY290dCBTdGFuaWV3aWN6Iiwib3JnYW5pemF0aW9ucyI6WyJkZWZhdWx0LTZiNTI5NDJlLTIzMTAtNGRkYi1iOGRlLTA2NTUyMTI5NDA2MSJdLCJ1c2VyX2NvbnRleHRfaWQiOiJjN2JlMjE3Yi04Mzc4LTRkOTQtYmFmNi0yN2RmNWYxMGY3NmMiLCJjb250ZXh0X3JvbGVzIjp7fSwiY29udGV4dF9ncm91cHMiOlsiL2FjY2Vzc19ncm91cHMvdXNlcl90eXBvbG9neS9jb3Blcm5pY3VzX2dlbmVyYWwvIiwiL29yZ2FuaXphdGlvbnMvZGVmYXVsdC02YjUyOTQyZS0yMzEwLTRkZGItYjhkZS0wNjU1MjEyOTQwNjEvcmVndWxhcl91c2VyLyJdLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJzY290dC5zdGFuaWVAZ21haWwuY29tIiwiZ2l2ZW5fbmFtZSI6IlNjb3R0IiwiZmFtaWx5X25hbWUiOiJTdGFuaWV3aWN6IiwidXNlcl9jb250ZXh0IjoiZGVmYXVsdC02YjUyOTQyZS0yMzEwLTRkZGItYjhkZS0wNjU1MjEyOTQwNjEiLCJlbWFpbCI6InNjb3R0LnN0YW5pZUBnbWFpbC5jb20ifQ.btli7lOuuRyH_qbPuR1x9YtP19JacdV39Bq3a68ApeDUsCv9hwVkxvoW43bW6zIt3qf4Xxo-7SwllbXSUmFzu5kI3bqF_IG5nJibpVqPboIAo6pu3JDWZy1C_Y5AbXR9c8jmgwH-64P073klgw0dlZEICugKo73l_nx6kb-NNhimrVacyF30d_SW7Sg3namPKjtvQiITtGfs0TV2oX6IrHLTxS0hdedy4yhr81CxI83AKuq8VXZQ1uDAb3XoRE0E16dVlQVfLGUGB6pSpPqSaiFBkBZ89l3LpTON1UnbsJT41nVEp25_x0HUjDF5_OJNkRrbIb7Pn1XQpwVcO1Gsnw","expires_in":600,"refresh_expires_in":3600,"refresh_token":"eyJhbGciOiJIUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJhZmFlZTU2Zi1iNWZiLTRiMzMtODRlYS0zMWY2NzMyMzNhNzgifQ.eyJleHAiOjE3NjAzNzMzNDgsImlhdCI6MTc2MDM2OTc0OCwianRpIjoiYmMwNTAwZDAtYzAxNC00YjM0LTlkYzktMjFjYWM4OTZlMDZlIiwiaXNzIjoiaHR0cHM6Ly9pZGVudGl0eS5kYXRhc3BhY2UuY29wZXJuaWN1cy5ldS9hdXRoL3JlYWxtcy9DRFNFIiwiYXVkIjoiaHR0cHM6Ly9pZGVudGl0eS5kYXRhc3BhY2UuY29wZXJuaWN1cy5ldS9hdXRoL3JlYWxtcy9DRFNFIiwic3ViIjoiNmI1Mjk0MmUtMjMxMC00ZGRiLWI4ZGUtMDY1NTIxMjk0MDYxIiwidHlwIjoiUmVmcmVzaCIsImF6cCI6ImNkc2UtcHVibGljIiwic2Vzc2lvbl9zdGF0ZSI6IjM5MDg4Y2E2LTY1NmMtNDMzMy04OWYzLTI4NjVjNjE4NWY1NCIsInNjb3BlIjoiQVVESUVOQ0VfUFVCTElDIG9wZW5pZCBlbWFpbCBwcm9maWxlIG9uZGVtYW5kX3Byb2Nlc3NpbmcgdXNlci1jb250ZXh0Iiwic2lkIjoiMzkwODhjYTYtNjU2Yy00MzMzLTg5ZjMtMjg2NWM2MTg1ZjU0In0.FBzLyJgDazLmPKy-UqyHN4u4Ev0XzmtKtmvNCVMiG6Q","token_type":"Bearer","not-before-policy":0,"session_state":"39088ca6-656c-4333-89f3-2865c6185f54","scope":"AUDIENCE_PUBLIC
+        openid email profile ondemand_processing user-context"}'
+    headers:
+      cache-control:
+      - no-store
+      content-length:
+      - '3483'
+      content-type:
+      - application/json
+      pragma:
+      - no-cache
+      referrer-policy:
+      - no-referrer
+      set-cookie:
+      - KEYCLOAK_LOCALE=; Version=1; Comment=Expiring cookie; Expires=Thu, 01-Jan-1970
+        00:00:10 GMT; Max-Age=0; Path=/auth/realms/CDSE/; Secure; HttpOnly
+      - KC_RESTART=; Version=1; Expires=Thu, 01-Jan-1970 00:00:10 GMT; Max-Age=0;
+        Path=/auth/realms/CDSE/; Secure; HttpOnly
+      - KC_AUTH_STATE=; Version=1; Expires=Thu, 01-Jan-1970 00:00:10 GMT; Max-Age=0;
+        Path=/auth/realms/CDSE/; Secure
+      - SERVERID=keycloak002.waw2; path=/
+      strict-transport-security:
+      - max-age=31536000; includeSubDomains
+      x-content-type-options:
+      - nosniff
+      x-frame-options:
+      - ALLOW-FROM https://www.google.com
+      x-xss-protection:
+      - 1; mode=block
+    status:
+      code: 200
+      message: OK
+- request:
     body: null
     headers:
       Accept:
       - '*/*'
       Accept-Encoding:
-      - gzip, deflate, br
+      - gzip, deflate, br, zstd
       Connection:
       - keep-alive
       User-Agent:
-      - python-requests/2.28.2
+      - python-requests/2.32.3
     method: GET
-    uri: https://catalogue.dataspace.copernicus.eu/odata/v1/Products?%24filter=startswith%28Name%2C%27S1A%27%29+and+contains%28Name%2C%27AUX_POEORB%27%29+and+ContentDate%2FStart+lt+%272019-12-31T22%3A20%3A15.428571Z%27+and+ContentDate%2FEnd+gt+%272020-01-01T00%3A01%3A00.000000Z%27&%24orderby=ContentDate%2FStart+asc&%24top=1
+    uri: https://catalogue.dataspace.copernicus.eu/odata/v1/Products?%24filter=startswith%28Name%2C%27S1A%27%29+and+contains%28Name%2C%27AUX_POEORB%27%29+and+ContentDate%2FStart+lt+%272019-12-31T23%3A59%3A00.000000Z%27+and+ContentDate%2FEnd+gt+%272020-01-01T00%3A01%3A00.000000Z%27&%24orderby=ContentDate%2FStart+asc&%24top=1
   response:
     body:
-      string: '{"@odata.context":"$metadata#Products","value":[{"@odata.mediaContentType":"application/octet-stream","Id":"21db46df-3991-4700-a454-dd91b6f2217a","Name":"S1A_OPER_AUX_POEORB_OPOD_20210315T155112_V20191230T225942_20200101T005942.EOF","ContentType":"application/octet-stream","ContentLength":4409905,"OriginDate":"2021-04-17T10:54:33.561Z","PublicationDate":"2023-10-25T14:34:15.278Z","ModificationDate":"2023-10-25T14:49:02.414Z","Online":true,"EvictionDate":"","S3Path":"/eodata/Sentinel-1/AUX/AUX_POEORB/2019/12/30/S1A_OPER_AUX_POEORB_OPOD_20210315T155112_V20191230T225942_20200101T005942.EOF","Checksum":[{"Value":"e0345368421e1b65127adc6ea103ab53","Algorithm":"MD5","ChecksumDate":"2023-10-25T14:49:02.002746Z"},{"Value":"b8fcec2aca5a68702f4887652b17994e4f23fb2392501dfba4106bee5ad7ce94","Algorithm":"BLAKE3","ChecksumDate":"2023-10-25T14:49:02.020456Z"}],"ContentDate":{"Start":"2019-12-30T22:59:42.000Z","End":"2020-01-01T00:59:42.000Z"},"Footprint":null,"GeoFootprint":null}],"@odata.nextLink":"https://catalogue.dataspace.copernicus.eu/odata/v1/Products?%24filter=startswith%28Name%2C%27S1A%27%29+and+contains%28Name%2C%27AUX_POEORB%27%29+and+ContentDate%2FStart+lt+%272019-12-31T22%3A20%3A15.428571Z%27+and+ContentDate%2FEnd+gt+%272020-01-01T00%3A01%3A00.000000Z%27&%24orderby=ContentDate%2FStart+asc&%24top=1&%24skip=1"}'
+      string: '{"@odata.context":"$metadata#Products","value":[{"@odata.mediaContentType":"application/octet-stream","Id":"21db46df-3991-4700-a454-dd91b6f2217a","Name":"S1A_OPER_AUX_POEORB_OPOD_20210315T155112_V20191230T225942_20200101T005942.EOF","ContentType":"application/octet-stream","ContentLength":4409905,"OriginDate":"2021-04-17T10:54:33.561000Z","PublicationDate":"2023-10-25T14:34:15.278386Z","ModificationDate":"2023-10-25T14:49:02.413958Z","Online":true,"EvictionDate":"9999-12-31T23:59:59.999999Z","S3Path":"/eodata/Sentinel-1/AUX/AUX_POEORB/2019/12/30/S1A_OPER_AUX_POEORB_OPOD_20210315T155112_V20191230T225942_20200101T005942.EOF","Checksum":[{"Value":"e0345368421e1b65127adc6ea103ab53","Algorithm":"MD5","ChecksumDate":"2023-10-25T14:49:02.002746Z"},{"Value":"b8fcec2aca5a68702f4887652b17994e4f23fb2392501dfba4106bee5ad7ce94","Algorithm":"BLAKE3","ChecksumDate":"2023-10-25T14:49:02.020456Z"}],"ContentDate":{"Start":"2019-12-30T22:59:42.000000Z","End":"2020-01-01T00:59:42.000000Z"},"Footprint":null,"GeoFootprint":null}],"@odata.nextLink":"https://catalogue.dataspace.copernicus.eu/odata/v1/Products?%24filter=startswith%28Name%2C%27S1A%27%29+and+contains%28Name%2C%27AUX_POEORB%27%29+and+ContentDate%2FStart+lt+%272019-12-31T23%3A59%3A00.000000Z%27+and+ContentDate%2FEnd+gt+%272020-01-01T00%3A01%3A00.000000Z%27&%24orderby=ContentDate%2FStart+asc&%24top=1&%24skip=1"}'
     headers:
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Allow-Headers:
+      - DNT,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization
+      Access-Control-Allow-Methods:
+      - GET, PUT, POST, DELETE, PATCH, OPTIONS
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Max-Age:
+      - '1728000'
       Connection:
       - keep-alive
       Content-Length:
-      - '1329'
+      - '1371'
       Content-Type:
       - application/json
       Date:
-      - Mon, 06 Nov 2023 23:17:28 GMT
+      - Mon, 13 Oct 2025 15:35:49 GMT
       Strict-Transport-Security:
       - max-age=15724800; includeSubDomains
       request-id:
-      - 85a6a627-cfb2-407c-a61b-5322f7764983
+      - e4aee827-516d-4856-a1a3-66fd014fb67e
       x-envoy-upstream-service-time:
-      - '174'
+      - '237'
     status:
       code: 200
       message: OK

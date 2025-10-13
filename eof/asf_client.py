@@ -114,16 +114,13 @@ class ASFClient:
         urls = []
         for dt, mission in zip(orbit_dts, missions):
             try:
-                if margin0 is not None and margin1 is not None:
-                    filename = last_valid_orbit(
-                        dt,
-                        dt,
-                        mission_to_eof_list[mission],
-                        margin0=margin0,
-                        margin1=margin1,
-                    )
-                else:
-                    filename = last_valid_orbit(dt, dt, mission_to_eof_list[mission])
+                filename = last_valid_orbit(
+                    dt,
+                    dt,
+                    mission_to_eof_list[mission],
+                    margin0=margin0,
+                    margin1=margin1,
+                )
                 # Construct the full download URL using the bucket name from _asf_s3
                 url = f"https://{ASF_BUCKET_NAME}.s3.amazonaws.com/{filename}"
                 urls.append(url)
