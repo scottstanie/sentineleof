@@ -1,12 +1,15 @@
 [build-system]
-requires = ["setuptools>=64", "wheel"]
+requires = ["setuptools>=64", "setuptools_scm[toml]>=6.2", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "sentineleof"
-version = "0.11.1"
 authors = [{name = "Scott Staniewicz", email = "scott.stanie@gmail.com"}]
 description = "Download precise orbit files for Sentinel 1 products"
+# The version will be written into a version.py upon install, auto-generated
+# see section: setuptools_scm
+# https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html#dynamic-metadata
+dynamic = ["version"]
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.9"
@@ -32,3 +35,12 @@ Homepage = "https://github.com/scottstanie/sentineleof"
 
 [project.scripts]
 eof = "eof.cli:cli"
+
+[tool.setuptools]
+packages = ["eof"]
+
+[tool.setuptools_scm]
+# https://github.com/pypa/setuptools_scm#configuration-parameters
+write_to = "eof/_version.py"
+# https://github.com/pypa/setuptools_scm#version-number-construction
+version_scheme = "no-guess-dev"
