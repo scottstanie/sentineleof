@@ -229,12 +229,26 @@ class Sentinel(Base):
         """
         return int(self._get_field("orbit_number"))
 
+    # Last S1C absolute orbit acquired before the 2026 orbital reconfiguration
+    # maneuver (maneuver ran 2026-06-08 to 2026-06-24). Orbits at or below this
+    # use the original relative-orbit offset; later orbits use the new one.
+    # See https://github.com/isce-framework/isce2/pull/28130
+    S1C_RECONFIG_ORBIT = 8018
+
     @property
     def relative_orbit(self):
-        """Relative orbit number/ path
+        """Relative orbit number/ path.
 
         Formulas for relative orbit from absolute come from:
         https://forum.step.esa.int/t/sentinel-1-relative-orbit-from-filename/7042
+
+        For S1C, the absolute-to-relative offset changed with the 2026 orbital
+        reconfiguration. Equivalently (per the ESA reconfiguration presentation),
+        ``offset = 172`` until 2026-06-24 and ``offset = 99`` from 2026-06-24; we
+        key off the absolute orbit number (``> 8018`` is post-maneuver) to match
+        https://github.com/isce-framework/isce2/pull/28130 .
+
+        The S1D offset (42) is confirmed by a FRINGE 2026 presentation.
 
         Example:
             >>> s = Sentinel('S1A_IW_SLC__1SDV_20180408T043025_20180408T043053_021371_024C9B_1B70')
@@ -249,9 +263,9 @@ class Sentinel(Base):
         elif self.mission == "S1B":
             return ((self.absolute_orbit - 27) % 175) + 1
         elif self.mission == "S1C":
-            return ((self.absolute_orbit - 172) % 175) + 1
+            offset = 172 if self.absolute_orbit <= self.S1C_RECONFIG_ORBIT else 99
+            return ((self.absolute_orbit - offset) % 175) + 1
         elif self.mission == "S1D":
-            # Offset derived from abs=2389 -> rel=73; needs verification with ESA
             return ((self.absolute_orbit - 42) % 175) + 1
         else:
             raise ValueError(f"Unknown relative orbit for mission {self.mission}")
