@@ -64,6 +64,23 @@ def test_s1c():
     assert p.mission == "S1C"
 
 
+def test_s1c_reconfiguration_offset():
+    """S1C offset changes after the 2026 orbital reconfiguration (abs orbit 8018).
+
+    https://github.com/isce-framework/isce2/pull/28130
+    """
+    # Last pre-maneuver orbit (8018) uses the original offset of 172
+    pre = Sentinel(
+        "S1C_IW_SLC__1SDV_20260608T060116_20260608T060143_008018_002CD0_8D44"
+    )
+    assert pre.relative_orbit == ((8018 - 172) % 175) + 1 == 147
+    # First post-maneuver orbit (8019) uses the new offset of 99
+    post = Sentinel(
+        "S1C_IW_SLC__1SDV_20260625T060116_20260625T060143_008019_002CD0_8D44"
+    )
+    assert post.relative_orbit == ((8019 - 99) % 175) + 1 == 46
+
+
 def test_s1d_fake_orbit_issue_74():
     """Tests ability to handle S1D: https://github.com/scottstanie/sentineleof/issues/74 ."""
     fname = (
