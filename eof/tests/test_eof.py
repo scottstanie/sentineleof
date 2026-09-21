@@ -33,6 +33,72 @@ def test_find_scenes_to_download(tmpdir):
         ]
 
 
+def test_other_mission_orbit_does_not_skip_scene(tmp_path):
+    """Check that one mission's orbit does not suppress another mission's scene.
+
+    POEORB validity windows are day-aligned identically for every S1 platform, so
+    a containment check on the start time alone treats an S1B orbit as covering an
+    S1A scene, and no S1A orbit is ever fetched.
+    """
+    search_path, save_dir = tmp_path / "scenes", tmp_path / "orbits"
+    search_path.mkdir()
+    save_dir.mkdir()
+    scene = "S1A_IW_SLC__1SDV_20180721T225743_20180721T225813_022898_027BD5_F737.zip"
+    other_mission_orbit = (
+        "S1B_OPER_AUX_POEORB_OPOD_20210313T235723_V20180720T225942_20180722T005942.EOF"
+    )
+    (search_path / scene).write_text("")
+    (save_dir / other_mission_orbit).write_text("")
+
+    orbit_dts, missions = download.find_scenes_to_download(
+        search_path=str(search_path), save_dir=str(save_dir)
+    )
+    assert missions == ["S1A"]
+    assert orbit_dts == [datetime.datetime(2018, 7, 21, 22, 57, 43)]
+
+
+def test_same_mission_orbit_skips_scene(tmp_path):
+    """Check that a matching-mission orbit still suppresses the download."""
+    search_path, save_dir = tmp_path / "scenes", tmp_path / "orbits"
+    search_path.mkdir()
+    save_dir.mkdir()
+    scene = "S1A_IW_SLC__1SDV_20180721T225743_20180721T225813_022898_027BD5_F737.zip"
+    same_mission_orbit = (
+        "S1A_OPER_AUX_POEORB_OPOD_20210313T235723_V20180720T225942_20180722T005942.EOF"
+    )
+    (search_path / scene).write_text("")
+    (save_dir / same_mission_orbit).write_text("")
+
+    orbit_dts, missions = download.find_scenes_to_download(
+        search_path=str(search_path), save_dir=str(save_dir)
+    )
+    assert orbit_dts == []
+    assert missions == []
+
+
+def test_same_start_time_different_missions_both_downloaded(tmp_path):
+    """Check that scenes sharing a start time are kept per mission.
+
+    The de-duplication of already-seen scenes keys on ``(start_time, mission)``;
+    keying on the time alone would drop one of the two missions from the result.
+    """
+    search_path = tmp_path / "scenes"
+    search_path.mkdir()
+    # Same start/stop time, different platform and product uid
+    (
+        search_path
+        / "S1A_IW_SLC__1SDV_20180721T225743_20180721T225813_022898_027BD5_F737.zip"
+    ).write_text("")
+    (
+        search_path
+        / "S1B_IW_SLC__1SDV_20180721T225743_20180721T225813_011036_014389_67D8.zip"
+    ).write_text("")
+
+    orbit_dts, missions = download.find_scenes_to_download(search_path=str(search_path))
+    assert sorted(missions) == ["S1A", "S1B"]
+    assert orbit_dts == [datetime.datetime(2018, 7, 21, 22, 57, 43)] * 2
+
+
 @pytest.mark.vcr
 def test_download_eofs_errors():
     orbit_dates = [datetime.datetime(2018, 5, 2, 4, 30, 26)]
